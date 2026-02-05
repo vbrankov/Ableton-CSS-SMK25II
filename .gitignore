@@ -1,0 +1,75 @@
+# Python compiled files
+*.pyc
+*.pyo
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backup files
+*.backup
+*.bak
+*~
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test and development files
+test_*.py
+*_test.py
+scratch/
+scratchpad/
+debug/
+
+# Documentation working files
+*.md~
+.~*.md
+
+# Virtual environments (if any)
+venv/
+env/
+ENV/
+.venv
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+Log.txt
+
+# Local configuration
+.env
+.env.local
+config.local.*
+
+# Claude AI files
+.claude/
+
+# Git files
+.git/
+.gitattributes
