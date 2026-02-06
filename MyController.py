@@ -7,12 +7,12 @@ from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode
 
 # Mode definitions (0-15)
 MODE_SESSION = 0
-MODE_1 = 1
-MODE_DEVICE = 2
-MODE_SENDS = 3
-MODE_MIX = 4
-MODE_EDIT_CLIP = 5
-MODE_INSTRUMENTS = 6
+MODE_DEVICE = 1
+MODE_SENDS = 2
+MODE_MIX = 3
+MODE_EDIT_CLIP = 4
+MODE_INSTRUMENTS = 5
+MODE_6 = 6
 MODE_7 = 7
 MODE_DRUMS = 8
 MODE_DRUM_COLOR = 9
@@ -188,11 +188,7 @@ class MyController(ControlSurface):
                 pad_index = note - 36
                 if 0 <= pad_index < 16:
                     self._current_mode.handle_pad(pad_index, velocity)
-            # Drums mode pads (channel 0)
-            elif channel == 0 and self._current_mode_number == MODE_DRUMS:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
+            # Drums mode pads (channel 0) - pass through to Ableton, not handled here
 
         # CC (knobs)
         elif msg_type == 0xB0:
@@ -211,6 +207,10 @@ class MyController(ControlSurface):
             # Session mode knobs (channel 0, CC 21-28)
             elif channel == 0 and 21 <= cc <= 28 and self._current_mode_number == MODE_SESSION:
                 knob_index = cc - 21
+                self._current_mode.handle_knob(knob_index, value)
+            # Drum mode knobs (channel 1, CC 20-27)
+            elif channel == 1 and 20 <= cc <= 27 and self._current_mode_number == MODE_DRUMS:
+                knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
 
     def build_midi_map(self, midi_map_handle):
@@ -255,14 +255,8 @@ class MyController(ControlSurface):
                 21 + i  # SESSION_KNOB_BASE_CC + i
             )
 
-        # Drums pads (channel 0, notes 36-51)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                0,  # DRUM_CHANNEL
-                36 + i
-            )
+        # Drums pads (channel 0, notes 36-51) - NOT forwarded, pass through to Ableton
+        # These notes go directly to Ableton for drum triggering
 
         # Device mode pads (channel 2, notes 36-51)
         for i in range(16):
@@ -279,6 +273,15 @@ class MyController(ControlSurface):
                 script_handle,
                 midi_map_handle,
                 2,  # DEVICE_KNOB_CHANNEL
+                20 + i
+            )
+
+        # Drum mode knobs (channel 1, CC 20-27)
+        for i in range(8):
+            Live.MidiMap.forward_midi_cc(
+                script_handle,
+                midi_map_handle,
+                1,  # DRUM_KNOB_CHANNEL
                 20 + i
             )
 

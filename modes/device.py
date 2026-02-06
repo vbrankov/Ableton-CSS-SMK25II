@@ -5,7 +5,8 @@ from .base import ModeBase
 from ..Hardware import (
     PAD_TYPE_NOTE,
     COLOR_WHITE, COLOR_DIM_WHITE, COLOR_OFF,
-    COLOR_BLUE, COLOR_ORANGE
+    COLOR_BLUE, COLOR_ORANGE,
+    COLOR_YELLOW, COLOR_CYAN, COLOR_MAGENTA
 )
 
 # Pad configuration
@@ -39,6 +40,7 @@ class DeviceMode(ModeBase):
         self._device_index = 0  # Selected device on current track
         self._bank_offset = 0  # Parameter bank offset (0, 8, 16, ...)
         self._device_listeners = []  # Track device-related listeners
+        self._devices_listener = None  # Current track's devices listener
 
     def configure(self):
         """Configure hardware for device mode."""
@@ -90,13 +92,15 @@ class DeviceMode(ModeBase):
 
         # Get devices on current track
         devices = list(track.devices) if hasattr(track, 'devices') else []
+        appointed_device = song.appointed_device
 
         # Update top row (device selection pads 0-7)
         for i in range(8):
             pad_idx = i
             if i < len(devices):
                 # Device exists - show as selectable
-                is_selected = (i == self._device_index)
+                # Check if this device is the appointed device
+                is_selected = (devices[i] == appointed_device)
                 color = COLOR_BLUE if is_selected else COLOR_DIM_WHITE
             else:
                 # No device at this index
@@ -105,19 +109,21 @@ class DeviceMode(ModeBase):
             self._hw.set_pad_color(pad_idx, color, shifted=False)
 
         # Update bottom row (function pads 8-15)
-        # Bank navigation pads
-        self._hw.set_pad_color(PAD_BANK_LEFT, COLOR_ORANGE, shifted=False)
-        self._hw.set_pad_color(PAD_BANK_RIGHT, COLOR_ORANGE, shifted=False)
+        # Color pads in pairs for visual grouping
 
-        # Device navigation pads
-        self._hw.set_pad_color(PAD_DEVICE_LEFT, COLOR_ORANGE, shifted=False)
-        self._hw.set_pad_color(PAD_DEVICE_RIGHT, COLOR_ORANGE, shifted=False)
+        # Bank navigation pads (yellow)
+        self._hw.set_pad_color(PAD_BANK_LEFT, COLOR_YELLOW, shifted=False)
+        self._hw.set_pad_color(PAD_BANK_RIGHT, COLOR_YELLOW, shifted=False)
 
-        # Track navigation pads
-        self._hw.set_pad_color(PAD_TRACK_LEFT, COLOR_ORANGE, shifted=False)
-        self._hw.set_pad_color(PAD_TRACK_RIGHT, COLOR_ORANGE, shifted=False)
+        # Device navigation pads (cyan)
+        self._hw.set_pad_color(PAD_DEVICE_LEFT, COLOR_CYAN, shifted=False)
+        self._hw.set_pad_color(PAD_DEVICE_RIGHT, COLOR_CYAN, shifted=False)
 
-        # Undo/redo pads
+        # Track navigation pads (magenta)
+        self._hw.set_pad_color(PAD_TRACK_LEFT, COLOR_MAGENTA, shifted=False)
+        self._hw.set_pad_color(PAD_TRACK_RIGHT, COLOR_MAGENTA, shifted=False)
+
+        # Undo/redo pads (white)
         self._hw.set_pad_color(PAD_UNDO, COLOR_WHITE, shifted=False)
         self._hw.set_pad_color(PAD_REDO, COLOR_WHITE, shifted=False)
 
@@ -134,8 +140,10 @@ class DeviceMode(ModeBase):
         if 0 <= pad_index <= 7:
             if pad_index < len(devices):
                 self._device_index = pad_index
-                song.view.select_device(devices[pad_index])
-                self.log(f"Selected device {pad_index}: {devices[pad_index].name}")
+                device = devices[pad_index]
+                song.view.select_device(device)
+                song.appointed_device = device  # Show blue hand
+                self.log(f"Selected device {pad_index}: {device.name}")
                 self.update()
 
         # Bottom row: functions (8-15)
@@ -152,7 +160,9 @@ class DeviceMode(ModeBase):
             new_index = max(0, self._device_index - 8)
             if new_index < len(devices):
                 self._device_index = new_index
-                song.view.select_device(devices[new_index])
+                device = devices[new_index]
+                song.view.select_device(device)
+                song.appointed_device = device  # Show blue hand
                 self.update()
 
         elif pad_index == PAD_DEVICE_RIGHT:
@@ -160,16 +170,18 @@ class DeviceMode(ModeBase):
             new_index = self._device_index + 8
             if new_index < len(devices):
                 self._device_index = new_index
-                song.view.select_device(devices[new_index])
+                device = devices[new_index]
+                song.view.select_device(device)
+                song.appointed_device = device  # Show blue hand
                 self.update()
 
         elif pad_index == PAD_TRACK_LEFT:
-            # Navigate tracks by 8
-            self._navigate_tracks(-8)
+            # Navigate tracks by 1
+            self._navigate_tracks(-1)
 
         elif pad_index == PAD_TRACK_RIGHT:
-            # Navigate tracks by 8
-            self._navigate_tracks(8)
+            # Navigate tracks by 1
+            self._navigate_tracks(1)
 
         elif pad_index == PAD_UNDO:
             if song.can_undo:
@@ -188,7 +200,7 @@ class DeviceMode(ModeBase):
             return
 
         song = self.song()
-        device = song.view.selected_device
+        device = song.appointed_device
 
         if not device:
             self.log("No device selected")
@@ -196,20 +208,30 @@ class DeviceMode(ModeBase):
 
         # Get device parameters
         params = list(device.parameters)
-        param_index = self._bank_offset + knob_index
+        param_index = self._bank_offset + knob_index + 1  # Skip "Device On" parameter at index 0
 
         if param_index < len(params):
             param = params[param_index]
 
             # Skip non-automatable parameters
-            if not param.is_enabled or param.is_quantized:
+            if not param.is_enabled:
                 return
 
-            # Adjust parameter value
             current = param.value
             param_range = param.max - param.min
-            step_size = param_range * 0.02  # 2% per step
-            new_value = max(param.min, min(param.max, current + delta * step_size))
+
+            # Handle quantized parameters (switches, selectors)
+            if param.is_quantized:
+                # For quantized params, increment/decrement by delta directly
+                # Works for on/off (0/1) and multi-value selectors
+                new_value = current + delta
+            else:
+                # For continuous params, use percentage step
+                step_size = param_range * 0.02  # 2% per step
+                new_value = current + delta * step_size
+
+            # Clamp to valid range
+            new_value = max(param.min, min(param.max, new_value))
             param.value = new_value
 
             self.log(f"Knob {knob_index}: {param.name} = {new_value:.2f}")
@@ -255,13 +277,64 @@ class DeviceMode(ModeBase):
         song = self.song()
         view = song.view
 
-        # Listen for selected device changes
-        def device_changed():
-            self.log("Device changed")
+        # Listen for track changes
+        def track_changed():
+            self.log("Track changed")
+            self._add_devices_listener()  # Re-add devices listener for new track
             self.update()
 
-        view.add_selected_track_listener(device_changed)
-        self._device_listeners.append(('selected_track', device_changed))
+        view.add_selected_track_listener(track_changed)
+        self._device_listeners.append(('selected_track', track_changed))
+
+        # Listen for devices list changes on current track
+        self._add_devices_listener()
+
+        # Listen for appointed device changes
+        def appointed_device_changed():
+            self.log("Appointed device changed")
+            # Sync device index with appointed device
+            appointed = song.appointed_device
+            if appointed:
+                track = song.view.selected_track
+                devices = list(track.devices) if hasattr(track, 'devices') else []
+                try:
+                    self._device_index = devices.index(appointed)
+                    self.log(f"Synced device index to {self._device_index}")
+                except ValueError:
+                    # Appointed device not in current track's devices
+                    pass
+            self.update()
+
+        song.add_appointed_device_listener(appointed_device_changed)
+        self._device_listeners.append(('appointed_device', appointed_device_changed))
+
+    def _add_devices_listener(self):
+        """Add listener for devices list changes on current track."""
+        # Remove old devices listener if it exists
+        if self._devices_listener:
+            try:
+                song = self.song()
+                track = song.view.selected_track
+                if hasattr(track, 'devices'):
+                    track.remove_devices_listener(self._devices_listener)
+            except:
+                pass
+            self._devices_listener = None
+
+        # Add new devices listener for current track
+        def devices_changed():
+            self.log("Devices list changed")
+            self.update()
+
+        try:
+            song = self.song()
+            track = song.view.selected_track
+            if hasattr(track, 'devices'):
+                track.add_devices_listener(devices_changed)
+                self._devices_listener = devices_changed
+                self.log("Added devices listener")
+        except:
+            self.log("Failed to add devices listener")
 
     def _remove_device_listeners(self):
         """Remove device listeners."""
@@ -271,8 +344,20 @@ class DeviceMode(ModeBase):
         for listener_type, listener in self._device_listeners:
             if listener_type == 'selected_track':
                 view.remove_selected_track_listener(listener)
+            elif listener_type == 'appointed_device':
+                song.remove_appointed_device_listener(listener)
 
         self._device_listeners = []
+
+        # Remove devices listener
+        if self._devices_listener:
+            try:
+                track = song.view.selected_track
+                if hasattr(track, 'devices'):
+                    track.remove_devices_listener(self._devices_listener)
+            except:
+                pass
+            self._devices_listener = None
 
     def disconnect(self):
         """Cleanup when leaving device mode."""
