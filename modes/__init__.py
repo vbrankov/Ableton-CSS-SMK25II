@@ -7,5 +7,6 @@ from .shift import ShiftMode
 from .device import DeviceMode
 from .mix import MixMode
 from .sends import SendsMode
+from .crossfader import CrossfaderMode
 
-__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'ShiftMode', 'DeviceMode', 'MixMode', 'SendsMode']
+__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'ShiftMode', 'DeviceMode', 'MixMode', 'SendsMode', 'CrossfaderMode']

@@ -3,7 +3,7 @@
 import Live
 from _Framework.ControlSurface import ControlSurface
 from .Hardware import Hardware
-from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode, MixMode, SendsMode
+from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode, MixMode, SendsMode, CrossfaderMode
 
 # Mode definitions (0-15)
 MODE_SESSION = 0
@@ -69,6 +69,7 @@ class MyController(ControlSurface):
         self._modes[MODE_DEVICE] = DeviceMode(self, self._hw, MODE_DEVICE)
         self._modes[MODE_MIX] = MixMode(self, self._hw, MODE_MIX)
         self._modes[MODE_SENDS] = SendsMode(self, self._hw, MODE_SENDS)
+        self._modes[MODE_6] = CrossfaderMode(self, self._hw, MODE_6)
         self._modes[MODE_DRUMS] = DrumsMode(self, self._hw, MODE_DRUMS)
         # Add more modes here as they're implemented
 
@@ -200,6 +201,11 @@ class MyController(ControlSurface):
                 pad_index = note - 36
                 if 0 <= pad_index < 16:
                     self._current_mode.handle_pad(pad_index, velocity)
+            # Crossfader mode pads (channel 5)
+            elif channel == 5 and self._current_mode_number == MODE_6:
+                pad_index = note - 36
+                if 0 <= pad_index < 16:
+                    self._current_mode.handle_pad(pad_index, velocity)
             # Drums mode pads (channel 0) - pass through to Ableton, not handled here
 
         # CC (knobs)
@@ -230,6 +236,10 @@ class MyController(ControlSurface):
                 self._current_mode.handle_knob(knob_index, value)
             # Sends mode knobs (channel 4, CC 20-27)
             elif channel == 4 and 20 <= cc <= 27 and self._current_mode_number == MODE_SENDS:
+                knob_index = cc - 20
+                self._current_mode.handle_knob(knob_index, value)
+            # Crossfader mode knobs (channel 5, CC 20-27)
+            elif channel == 5 and 20 <= cc <= 27 and self._current_mode_number == MODE_6:
                 knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
 
@@ -338,6 +348,24 @@ class MyController(ControlSurface):
                 script_handle,
                 midi_map_handle,
                 4,  # SENDS_KNOB_CHANNEL
+                20 + i
+            )
+
+        # Crossfader mode pads (channel 5, notes 36-51)
+        for i in range(16):
+            Live.MidiMap.forward_midi_note(
+                script_handle,
+                midi_map_handle,
+                5,  # CROSSFADER_PAD_CHANNEL
+                36 + i
+            )
+
+        # Crossfader mode knobs (channel 5, CC 20-27)
+        for i in range(8):
+            Live.MidiMap.forward_midi_cc(
+                script_handle,
+                midi_map_handle,
+                5,  # CROSSFADER_KNOB_CHANNEL
                 20 + i
             )
 

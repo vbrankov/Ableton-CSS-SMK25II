@@ -75,14 +75,26 @@ Pad 1 tapped alone adds the given instrument or device to the track. Pad 2 delet
 
 # Mode 6 - Crossfader
 
-  - Knob 1: Scroll tracks
-  - Knob 8: Crossfader position
+Knobs:
+  - Knob 1: Scroll tracks (same as track navigation)
+  - Knob 8: Crossfader position (±2% per step)
 
-Top row pads: Assign tracks to A/B/None
+Top row pads (0-7): Cycle crossfader assignment for 8 visible tracks
+  - Press to cycle: None → A → B → None
+  - None: dim track color
+  - A: red (left)
+  - B: blue (right)
+
 Bottom row pads:
+  - Pads 0-2 (8-10): Snap crossfader to A (red) / Center (dim white) / B (blue)
+  - Pad 3 (11): Unused
+  - Pads 4-5 (12-13): Navigate tracks by 8
+  - Pads 6-7 (14-15): Undo/Redo
 
-  - Pads 5-6: Navigate tracks by 8
-  - Pads 7-8: Undo/Redo
+Notes:
+  - Red box highlights 8 visible tracks
+  - Tracks assigned to "None" always play regardless of crossfader position
+  - Perfect for DJ-style mixing and live transitions
 
 # Mode 8 - Drums
 

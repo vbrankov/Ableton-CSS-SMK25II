@@ -9,7 +9,9 @@ Press **MCP button** to enter mode selection.
 - Pad 1: Mode 1 - Device
 - Pad 2: Mode 2 - Mix
 - Pad 3: Mode 3 - Sends
-- Pad 4-7: (not implemented)
+- Pad 4-5: (not implemented)
+- Pad 6: Mode 6 - Crossfader
+- Pad 7: (not implemented)
 - Pad 8: Mode 8 - Drums
 - Pad 9-15: (not implemented)
 
@@ -130,6 +132,39 @@ Press **MCP button** to enter mode selection.
 
 ---
 
+## Mode 6 - Crossfader
+
+**Top Row Pads (0-7):**
+- Cycle crossfader assignment for 8 visible tracks
+- Press to cycle: None → A → B → None
+- None: dim track color
+- A: red (left)
+- B: blue (right)
+
+**Bottom Row Pads (8-15):**
+- Pad 8: Snap crossfader to A (left, red)
+- Pad 9: Snap crossfader to center (dim white)
+- Pad 10: Snap crossfader to B (right, blue)
+- Pad 11: Unused (off)
+- Pad 12-13: Track left/right by 8 (orange)
+- Pad 14-15: Undo/redo (white)
+
+**Knobs:**
+- Knob 1: Scroll through tracks (same as track navigation)
+- Knob 8: Control crossfader position
+  - ±2% per step
+  - Left (min) = A tracks only
+  - Center = both A and B tracks
+  - Right (max) = B tracks only
+
+**Notes:**
+- Red box highlights 8 visible tracks (8 wide × 1 tall)
+- Red box moves when navigating tracks
+- Tracks assigned to "None" always play regardless of crossfader position
+- Perfect for DJ-style mixing and live transitions
+
+---
+
 ## Mode 8 - Drums
 
 **Pads:**
@@ -163,6 +198,7 @@ Press **MCP button** to enter mode selection.
 - Device mode: Pads=2, Knobs=2
 - Mix mode: Pads=3, Knobs=3
 - Sends mode: Pads=4, Knobs=4
+- Crossfader mode: Pads=5, Knobs=5
 - Drums mode: Pads=0, Knobs=1
 - Shift mode: Pads=15, Knobs=14
 
