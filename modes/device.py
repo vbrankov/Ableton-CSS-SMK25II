@@ -148,12 +148,19 @@ class DeviceMode(ModeBase):
 
         # Bottom row: functions (8-15)
         elif pad_index == PAD_BANK_LEFT:
-            self._bank_offset = max(0, self._bank_offset - 8)
-            self.log(f"Bank offset: {self._bank_offset}")
+            new_offset = max(0, self._bank_offset - 8)
+            if new_offset != self._bank_offset:
+                self._bank_offset = new_offset
 
         elif pad_index == PAD_BANK_RIGHT:
-            self._bank_offset += 8
-            self.log(f"Bank offset: {self._bank_offset}")
+            # Check if device has more parameters before banking
+            device = song.appointed_device
+            if device:
+                num_params = len(list(device.parameters))
+                # Only bank if there are parameters beyond current bank
+                # (We skip parameter 0, so check if there are params at offset+1+8)
+                if self._bank_offset + 1 + 8 < num_params:
+                    self._bank_offset += 8
 
         elif pad_index == PAD_DEVICE_LEFT:
             # Navigate devices by 8
