@@ -3,13 +3,13 @@
 import Live
 from _Framework.ControlSurface import ControlSurface
 from .Hardware import Hardware
-from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode
+from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode, MixMode
 
 # Mode definitions (0-15)
 MODE_SESSION = 0
 MODE_DEVICE = 1
-MODE_SENDS = 2
-MODE_MIX = 3
+MODE_MIX = 2
+MODE_SENDS = 3
 MODE_EDIT_CLIP = 4
 MODE_INSTRUMENTS = 5
 MODE_6 = 6
@@ -67,6 +67,7 @@ class MyController(ControlSurface):
         # Create mode instances
         self._modes[MODE_SESSION] = SessionMode(self, self._hw, MODE_SESSION)
         self._modes[MODE_DEVICE] = DeviceMode(self, self._hw, MODE_DEVICE)
+        self._modes[MODE_MIX] = MixMode(self, self._hw, MODE_MIX)
         self._modes[MODE_DRUMS] = DrumsMode(self, self._hw, MODE_DRUMS)
         # Add more modes here as they're implemented
 
@@ -188,6 +189,11 @@ class MyController(ControlSurface):
                 pad_index = note - 36
                 if 0 <= pad_index < 16:
                     self._current_mode.handle_pad(pad_index, velocity)
+            # Mix mode pads (channel 3)
+            elif channel == 3 and self._current_mode_number == MODE_MIX:
+                pad_index = note - 36
+                if 0 <= pad_index < 16:
+                    self._current_mode.handle_pad(pad_index, velocity)
             # Drums mode pads (channel 0) - pass through to Ableton, not handled here
 
         # CC (knobs)
@@ -210,6 +216,10 @@ class MyController(ControlSurface):
                 self._current_mode.handle_knob(knob_index, value)
             # Drum mode knobs (channel 1, CC 20-27)
             elif channel == 1 and 20 <= cc <= 27 and self._current_mode_number == MODE_DRUMS:
+                knob_index = cc - 20
+                self._current_mode.handle_knob(knob_index, value)
+            # Mix mode knobs (channel 3, CC 20-27)
+            elif channel == 3 and 20 <= cc <= 27 and self._current_mode_number == MODE_MIX:
                 knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
 
@@ -282,6 +292,24 @@ class MyController(ControlSurface):
                 script_handle,
                 midi_map_handle,
                 1,  # DRUM_KNOB_CHANNEL
+                20 + i
+            )
+
+        # Mix mode pads (channel 3, notes 36-51)
+        for i in range(16):
+            Live.MidiMap.forward_midi_note(
+                script_handle,
+                midi_map_handle,
+                3,  # MIX_PAD_CHANNEL
+                36 + i
+            )
+
+        # Mix mode knobs (channel 3, CC 20-27)
+        for i in range(8):
+            Live.MidiMap.forward_midi_cc(
+                script_handle,
+                midi_map_handle,
+                3,  # MIX_KNOB_CHANNEL
                 20 + i
             )
 

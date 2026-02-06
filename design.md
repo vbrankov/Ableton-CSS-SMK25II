@@ -30,16 +30,7 @@ The knobs represent the blue hand knobs. The top row will select the device 1-8.
   - Pads 5-6: Navigate tracks by 8
   - Pads 7-8: Undo/Redo
 
-# Mode 2 - Sends
-
-The knobs represent sends of the 8 tracks. The top row of the pads will select the send 1-8. The bottom row will be:
-
-  - Pads 1-2: Navigate sends by 8
-  - Pads 3-4: Unused
-  - Pads 5-6: Navigate tracks by 8
-  - Pads 7-8: Undo/Redo
-
-# Mode 3 - Mix mode
+# Mode 2 - Mix mode
 
 The knobs represent the track volumes. The top row of the pads will mute or solo tracks, denpending on row mode selector. Bottom row of the pads will be:
 
@@ -49,6 +40,15 @@ The knobs represent the track volumes. The top row of the pads will mute or solo
   - Pads 7-8: Undo/Redo
 
 When the mode changes, the top row will adjust colors. Muted or solo track will have the full color of the track, the remaining tracks will be the dark shade of the track.
+
+# Mode 3 - Sends
+
+The knobs represent sends of the 8 tracks. The top row of the pads will select the send 1-8. The bottom row will be:
+
+  - Pads 1-2: Navigate sends by 8
+  - Pads 3-4: Unused
+  - Pads 5-6: Navigate tracks by 8
+  - Pads 7-8: Undo/Redo
 
 # Mode 4 - Edit clip (pending)
 

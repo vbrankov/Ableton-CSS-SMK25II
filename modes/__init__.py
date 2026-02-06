@@ -5,5 +5,6 @@ from .session import SessionMode
 from .drums import DrumsMode
 from .shift import ShiftMode
 from .device import DeviceMode
+from .mix import MixMode
 
-__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'ShiftMode', 'DeviceMode']
+__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'ShiftMode', 'DeviceMode', 'MixMode']
