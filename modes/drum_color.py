@@ -5,7 +5,7 @@ import json
 import time
 import colorsys
 from .base import ModeBase
-from ..Hardware import PAD_TYPE_CUSTOM
+from ..Hardware import PAD_TYPE_CUSTOM, PAD_TYPE_NOTE
 
 # Drum mode settings
 DRUM_COLOR_PAD_CHANNEL = 9  # Channel 10 (standard MIDI drum channel)
@@ -17,9 +17,6 @@ DRUM_KNOB_BASE_CC = 20  # CC 20-27
 # Start with orange color (matches Mode 8 Drums default)
 # Orange: RGB(255, 160, 0) = HSV(37.65°, 100%, 100%)
 DEFAULT_HSV = [(37.65/360, 1.0, 1.0)] * 16  # All pads orange
-
-# Time window for considering pads "recently released"
-RELEASE_TIME_WINDOW = 0.5  # 0.5 seconds
 
 
 class DrumColorMode(ModeBase):
@@ -54,7 +51,7 @@ class DrumColorMode(ModeBase):
         # Get current instrument and load its colors
         self._update_instrument()
 
-        # Configure all pads as COMB_MCP with dual-channel sysex
+        # Configure all pads as regular NOTE pads on channel 9
         # Same layout as Mode 8: top row (0-7) = upper notes (44-51), bottom row (8-15) = lower notes (36-43)
         for i in range(16):
             if i < 8:
@@ -64,19 +61,14 @@ class DrumColorMode(ModeBase):
                 # Bottom row - lower octave (notes 36-43)
                 note = DRUM_BASE_NOTE + (i - 8)
 
-            # Configure as CUSTOM type
-            self._hw.set_pad_type(i, PAD_TYPE_CUSTOM, shifted=False)
-
-            # Build sysex: ch9 tracking first, then drum trigger last
-            # Format: [length, note-on ch9, note-off ch9, note-on ch0]
-            midi_message = [
-                0x99, note, 0x7F,  # Note-on ch9 (track press)
-                0x99, note, 0x00,  # Note-off ch9 (track release)
-                0x90, note, 0x7F,  # Note-on ch0 (drum plays)
-            ]
-            # First byte is the length
-            sysex_bytes = [len(midi_message)] + midi_message
-            self._hw.set_pad_sysex(i, sysex_bytes, shifted=False)
+            # Configure as NOTE type on channel 9
+            self._hw.configure_pad(
+                pad_index=i,
+                pad_type=PAD_TYPE_NOTE,
+                channel=DRUM_COLOR_PAD_CHANNEL,  # Channel 9
+                note=note,
+                shifted=False
+            )
 
         # Set all LEDs to ON (255)
         for i in range(16):
@@ -108,6 +100,7 @@ class DrumColorMode(ModeBase):
 
     def handle_pad(self, pad_index, velocity):
         """Handle pad press/release - track press/release times for color editing."""
+        self.log(f"DEBUG: handle_pad({pad_index}, {velocity})")
         if velocity == 0:
             # Pad released - record the release time
             self._pad_release_times[pad_index] = time.time()
@@ -154,19 +147,45 @@ class DrumColorMode(ModeBase):
             self._navigate_history(delta)
 
     def _get_recently_released_pads(self):
-        """Get pads that were released within 0.5s of the most recent release."""
+        """Get pads that were pressed or released while the most recently released pad was held.
+
+        Algorithm:
+        1. Find the pad that was most recently released (pad R)
+        2. Get the time window [R's press time, R's release time]
+        3. Include all pads that were pressed OR released during this window
+        """
         if not self._pad_release_times:
+            self.log("DEBUG: No release times recorded")
             return []
 
-        # Find X = maximum "last released" time
-        X = max(self._pad_release_times.values())
+        # Find the most recently released pad
+        most_recent_pad = max(self._pad_release_times.keys(),
+                             key=lambda p: self._pad_release_times[p])
 
-        # Adjust all pads where "last released" > X - 0.5
+        # Get the time window for this pad
+        press_time = self._pad_press_times.get(most_recent_pad, 0)
+        release_time = self._pad_release_times[most_recent_pad]
+
+        self.log(f"DEBUG: Most recent pad: {most_recent_pad}")
+        self.log(f"DEBUG: Window: press={press_time:.3f}, release={release_time:.3f}, duration={release_time-press_time:.3f}s")
+
+        # Include all pads that were pressed or released during this window
         recent_pads = []
-        for pad_idx, release_time in self._pad_release_times.items():
-            if release_time > X - RELEASE_TIME_WINDOW:
-                recent_pads.append(pad_idx)
+        for pad_idx in range(16):
+            pad_press = self._pad_press_times.get(pad_idx, 0)
+            pad_release = self._pad_release_times.get(pad_idx, 0)
 
+            # Check if this pad was pressed or released during the window
+            pressed_during = press_time <= pad_press <= release_time
+            released_during = press_time <= pad_release <= release_time
+
+            if pressed_during or released_during:
+                recent_pads.append(pad_idx)
+                self.log(f"DEBUG: Pad {pad_idx} IN group: press={pad_press:.3f}, release={pad_release:.3f}, pressed_during={pressed_during}, released_during={released_during}")
+            else:
+                self.log(f"DEBUG: Pad {pad_idx} NOT in group: press={pad_press:.3f}, release={pad_release:.3f}")
+
+        self.log(f"DEBUG: Final group: {recent_pads}")
         return recent_pads
 
     def _adjust_hue(self, delta):

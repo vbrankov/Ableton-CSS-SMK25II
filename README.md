@@ -24,8 +24,11 @@ A custom MIDI Remote Script for the SMK25II MIDI controller, designed for Ableto
 2. Restart Ableton Live
 
 3. In Ableton's Preferences → Link/Tempo/MIDI:
-   - Set Control Surface to "SMK25II"
-   - Set Input/Output to your SMK25II device
+   - **IMPORTANT**: The SMK25II appears as three separate MIDI ports
+   - **Enable all three SMK25II input sources** (turn on Track, Sync, and Remote for each)
+   - **Set Control Surface to "SMK25II" ONLY on the first SMK25II port**
+   - Leave Control Surface blank for the other two ports
+   - This configuration is required for all modes to work correctly (especially Drum Color mode)
 
 ## Usage
 
