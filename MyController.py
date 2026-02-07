@@ -3,7 +3,7 @@
 import Live
 from _Framework.ControlSurface import ControlSurface
 from .Hardware import Hardware
-from .modes import SessionMode, DrumsMode, ShiftMode, DeviceMode, MixMode, SendsMode, CrossfaderMode
+from .modes import SessionMode, DrumsMode, DrumColorMode, ShiftMode, DeviceMode, MixMode, SendsMode, CrossfaderMode
 
 # Mode definitions (0-15)
 MODE_SESSION = 0
@@ -71,6 +71,7 @@ class MyController(ControlSurface):
         self._modes[MODE_SENDS] = SendsMode(self, self._hw, MODE_SENDS)
         self._modes[MODE_6] = CrossfaderMode(self, self._hw, MODE_6)
         self._modes[MODE_DRUMS] = DrumsMode(self, self._hw, MODE_DRUMS)
+        self._modes[MODE_DRUM_COLOR] = DrumColorMode(self, self._hw, MODE_DRUM_COLOR)
         # Add more modes here as they're implemented
 
         # Create shift mode
@@ -206,7 +207,22 @@ class MyController(ControlSurface):
                 pad_index = note - 36
                 if 0 <= pad_index < 16:
                     self._current_mode.handle_pad(pad_index, velocity)
-            # Drums mode pads (channel 0) - pass through to Ableton, not handled here
+            # Drum Color mode pads (channel 9) - when in MODE_DRUM_COLOR
+            # Receive ch9 for color editing tracking (ch0 from sysex passes through for playback)
+            elif channel == 9 and self._current_mode_number == MODE_DRUM_COLOR:
+                # Map notes to pad indices (rows are swapped in drum modes)
+                # Notes 36-43 (lower notes) → pad indices 8-15 (bottom row)
+                # Notes 44-51 (higher notes) → pad indices 0-7 (top row)
+                if 36 <= note <= 43:
+                    pad_index = note - 36 + 8  # Bottom row
+                elif 44 <= note <= 51:
+                    pad_index = note - 44  # Top row
+                else:
+                    pad_index = -1
+
+                if 0 <= pad_index < 16:
+                    self._current_mode.handle_pad(pad_index, velocity)
+            # Drums mode pads (channel 0) - pass through to Ableton when in MODE_DRUMS
 
         # CC (knobs)
         elif msg_type == 0xB0:
@@ -240,6 +256,10 @@ class MyController(ControlSurface):
                 self._current_mode.handle_knob(knob_index, value)
             # Crossfader mode knobs (channel 5, CC 20-27)
             elif channel == 5 and 20 <= cc <= 27 and self._current_mode_number == MODE_6:
+                knob_index = cc - 20
+                self._current_mode.handle_knob(knob_index, value)
+            # Drum Color mode knobs (channel 10, CC 20-27)
+            elif channel == 10 and 20 <= cc <= 27 and self._current_mode_number == MODE_DRUM_COLOR:
                 knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
 
@@ -366,6 +386,25 @@ class MyController(ControlSurface):
                 script_handle,
                 midi_map_handle,
                 5,  # CROSSFADER_KNOB_CHANNEL
+                20 + i
+            )
+
+        # Drum Color mode pads (channel 9, notes 36-51)
+        # Forward ch9 for tracking (ch0 from sysex passes through for playback)
+        for i in range(16):
+            Live.MidiMap.forward_midi_note(
+                script_handle,
+                midi_map_handle,
+                9,  # Channel 9 for tracking
+                36 + i
+            )
+
+        # Drum Color mode knobs (channel 10, CC 20-27)
+        for i in range(8):
+            Live.MidiMap.forward_midi_cc(
+                script_handle,
+                midi_map_handle,
+                10,  # DRUM_COLOR_KNOB_CHANNEL
                 20 + i
             )
 

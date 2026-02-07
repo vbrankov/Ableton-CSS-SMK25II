@@ -1,5 +1,8 @@
 """Drums mode (Mode 8) - Drum pad mode."""
 
+import os
+import json
+import colorsys
 from .base import ModeBase
 from ..Hardware import PAD_TYPE_NOTE
 
@@ -16,12 +19,19 @@ DRUM_KNOB_BASE_CC = 20  # CC 20-27
 class DrumsMode(ModeBase):
     """Drums mode - Basic drum pad grid."""
 
+    def __init__(self, controller, hardware, mode_number):
+        super(DrumsMode, self).__init__(controller, hardware, mode_number)
+        self._pad_colors = None  # Will be loaded from config if available
+
     def configure(self):
         """Configure hardware for drums mode."""
         self.log("Configuring drums mode...")
 
         # Clear hardware cache
         self._hw.clear_cache()
+
+        # Load colors from drum_color config if available
+        self._load_colors()
 
         # Configure all pads as drum notes
         # Swap rows: top row (0-7) gets upper notes (44-51), bottom row (8-15) gets lower notes (36-43)
@@ -40,8 +50,9 @@ class DrumsMode(ModeBase):
                 note=note,
                 shifted=False
             )
-            # Set color to orange
-            self._hw.set_pad_color(i, COLOR_DRUM, shifted=False)
+            # Set color - use saved color if available, otherwise orange
+            color = self._pad_colors[i] if self._pad_colors else COLOR_DRUM
+            self._hw.set_pad_color(i, color, shifted=False)
 
         # Configure knobs for device control (blue hand)
         for i in range(8):
@@ -118,6 +129,55 @@ class DrumsMode(ModeBase):
         else:
             self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
+
+    def _load_colors(self):
+        """Load colors from drum_color config for current instrument."""
+        try:
+            song = self.song()
+            track = song.view.selected_track
+
+            # Get first device on track
+            devices = list(track.devices) if hasattr(track, 'devices') else []
+            if not devices:
+                return
+
+            device = devices[0]
+            instrument_id = self._get_instrument_id(device)
+
+            # Load config file
+            home = os.path.expanduser("~")
+            config_file = os.path.join(home, ".config", "SMK25II", "drum_colors.json")
+
+            if not os.path.exists(config_file):
+                return
+
+            with open(config_file, 'r') as f:
+                data = json.load(f)
+                instrument_colors = data.get('instruments', {})
+
+                if instrument_id in instrument_colors:
+                    # Convert HSV to RGB for each pad
+                    hsv_colors = instrument_colors[instrument_id]
+                    self._pad_colors = [self._hsv_to_rgb(*hsv) for hsv in hsv_colors]
+                    self.log(f"Loaded colors for instrument: {instrument_id}")
+
+        except Exception as e:
+            self.log(f"Could not load colors: {e}")
+
+    def _get_instrument_id(self, device):
+        """Get a unique identifier for the instrument device."""
+        try:
+            return f"{device.class_name}:{device.name}"
+        except:
+            return "unknown"
+
+    def _hsv_to_rgb(self, h, s, v):
+        """Convert HSV to RGB integer (for LED)."""
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        r = int(r * 255)
+        g = int(g * 255)
+        b = int(b * 255)
+        return r | (g << 8) | (b << 16)
 
     def disconnect(self):
         """Cleanup when leaving drums mode."""

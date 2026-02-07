@@ -13,7 +13,8 @@ Press **MCP button** to enter mode selection.
 - Pad 6: Mode 6 - Crossfader
 - Pad 7: (not implemented)
 - Pad 8: Mode 8 - Drums
-- Pad 9-15: (not implemented)
+- Pad 9: Mode 9 - Drum Color
+- Pad 10-15: (not implemented)
 
 **Knobs (Global Navigation):**
 - Knob 1: Select track (left/right through tracks)
@@ -182,6 +183,98 @@ Press **MCP button** to enter mode selection.
 
 ---
 
+## Mode 9 - Drum Color
+
+Interactive drum pad mode with per-pad color editing and persistence.
+
+**Pads:**
+- Bottom row (8-15): Drum notes C1-G1 (MIDI notes 36-43)
+- Top row (0-7): Drum notes G#1-D#2 (MIDI notes 44-51)
+- Notes pass through directly to Ableton
+- Channel: 9 (Channel 10)
+- Colors: Individually editable per pad (persists per instrument)
+
+**Knobs (HSV Controls):**
+- Knob 0: Hue adjustment
+  - On mode entry: adjusts all pads (until you press a pad or 0.5s passes)
+  - After pressing pad(s): release → rotate knob within 0.5s to adjust those pads
+  - After 0.5s of no pad presses: knobs do nothing (prevents accidents)
+  - Hue wraps around (full color wheel)
+  - ±2% per step
+
+- Knob 1: Saturation adjustment
+  - Same targeting behavior as Knob 0
+  - Range: 0-100%
+  - ±2% per step
+
+- Knob 2: Brightness adjustment
+  - Same targeting behavior as Knob 0
+  - Range: 0-100%
+  - ±2% per step
+
+**Knobs (RGB Controls):**
+- Knob 3: Red channel adjustment
+  - Same targeting behavior as Knob 0
+  - Adjusts red component directly
+  - ±4% per step (2x speed)
+
+- Knob 4: Green channel adjustment
+  - Same targeting behavior as Knob 0
+  - Adjusts green component directly
+  - ±4% per step (2x speed)
+
+- Knob 5: Blue channel adjustment
+  - Same targeting behavior as Knob 0
+  - Adjusts blue component directly
+  - ±4% per step (2x speed)
+
+**Knobs (Special Functions):**
+- Knob 6: Match color
+  - Moves all recently released pads towards the most recently pressed pad's color
+  - Each rotation moves all HSV components 4% closer to target
+  - Useful for making multiple pads share similar colors
+
+- Knob 7: History navigation
+  - Navigate through last 16 instrument color layouts
+  - Useful for copying color schemes between drum instruments
+  - Select instrument A → go to instrument B → rotate knob 7 → loads A's colors
+
+**Color Persistence:**
+- Colors are saved per instrument device
+- File location: `~/.config/SMK25II/drum_colors.json`
+- Human-readable JSON format
+- Stores HSV values (hue, saturation, brightness) for each pad
+- Maintains history of last 16 instruments
+
+**Workflow:**
+1. Enter Mode 9 (Drum Color)
+2. To set initial colors for all pads:
+   - Immediately after entering mode, rotate knobs 0-2 (HSV)
+   - All pads change together (you have 0.5s before this expires)
+3. To adjust specific pads:
+   - Press the pad(s) you want to edit
+   - Release them (you can see the colors now)
+   - Within 0.5 seconds, rotate knobs:
+     - Knobs 0-2: Adjust hue/saturation/brightness (HSV)
+     - Knobs 3-5: Adjust red/green/blue (RGB, faster)
+     - Knob 6: Match color to most recently pressed pad
+   - Colors update in real-time and save automatically
+4. Play pads to trigger drums and see their colors
+5. Switch instruments - colors automatically update to that instrument's layout
+6. Use knob 7 to copy color layouts between instruments
+
+**Notes:**
+- The 0.5-second window allows you to release pads one-by-one without losing the selection
+- Hardware lights pads white when held - release them to see your color edits
+- After 0.5s of inactivity, knobs do nothing (prevents accidental changes)
+- Colors persist per instrument device across sessions
+- Switching tracks/devices automatically loads that instrument's color layout
+- Use HSV knobs (0-2) for intuitive color adjustments
+- Use RGB knobs (3-5) for precise color matching or faster adjustments
+- Match color (knob 6) helps create cohesive color schemes quickly
+
+---
+
 ## Hardware Notes
 
 **Relative Knobs:**
@@ -200,6 +293,7 @@ Press **MCP button** to enter mode selection.
 - Sends mode: Pads=4, Knobs=4
 - Crossfader mode: Pads=5, Knobs=5
 - Drums mode: Pads=0, Knobs=1
+- Drum Color mode: Pads=9, Knobs=10
 - Shift mode: Pads=15, Knobs=14
 
 **Performance:**

@@ -2,7 +2,7 @@ import time
 import sys
 
 IS_WINDOWS = sys.platform == 'win32'
-MIN_SEND_INTERVAL = 0.001  # 1ms between messages
+MIN_SEND_INTERVAL = 0.002  # 2ms between messages
 
 
 class MidiSender:

@@ -118,3 +118,15 @@ class Hardware:
         self.set_pad_channel(pad_index, channel, shifted=shifted)
         self.set_pad_note(pad_index, note, shifted=shifted)
         self.set_pad_velocity_range(pad_index, 0, 127, shifted=shifted)
+
+    def set_pad_sysex(self, pad_index, sysex_bytes, shifted=False):
+        """Set a pad's sysex payload (for CUSTOM pads).
+
+        Args:
+            pad_index: Pad index (0-15)
+            sysex_bytes: List of MIDI bytes to send when pad is pressed
+            shifted: Whether to configure shifted pad
+        """
+        addr = self._protocol.get_pad_addr(pad_index, shifted=shifted)
+        msg = self._protocol.build_sysex_packet(addr, sysex_bytes)
+        self._midi.send(msg)

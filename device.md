@@ -36,7 +36,7 @@ Each pad has the following values configurable:
 
 Sysex messages are used to configure the device. The message format is byte sequence of the following format:
 
-  - Header, which is usually F0 00 32 09 49 00 40 02. Messages for setting color have 59 in the header instead of 49.
+  - Header, which is usually F0 00 32 09 49 00 40 02. Messages for setting color have 59 in the header instead of 49. Messages for setting SysEx for pads have 49 04 in the header instead of 49 00.
   - Parameter address, which is represented as 4 7-bit numbers. Lowest bits come first.
   - Value length in bits, which is represented as 4 7-bit numbers. The length is stored multiplied by 2. So for a value of length 8-bits the length is 10 00 00 00.
   - Value, stored as 7-bit sequence. An 8-bit value has to be stored as two 7-bit sequences, where the second sequence uses only the first bit.
@@ -62,6 +62,51 @@ Examples:
   - Set color of pad 2 preset 3 to green:
 
       F0 00 32 09 59 00 00 40 02 15 15 00 00 30 00 00 00 00 7E 03 48 05 F7
+  
+  - Set sysex:
+
+      F0 00 32 09 49 04 00 40 02 07 01 00 00 10 08 00 00 01
+      7C 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 4C 01 F7
+
+## Setting Pad SysEx (COMB_MCP)
+
+When a pad is configured as type "Comb MCP" (type 6), it can send a custom MIDI message sequence when pressed. This is configured via the sysex field (offset 9 from pad base address).
+
+**SysEx Payload Format:**
+- The sysex field is 520 bits (65 bytes)
+- The first byte is the **length** of the MIDI message to send
+- Remaining bytes are the actual MIDI message bytes
+- MIDI bytes can be any 8-bit value (0x00-0xFF), including values > 127 like 0xF0
+
+**Example:** To send dual-channel drum notes (for playback on ch0 and tracking on ch9):
+```
+Length: 12 (0x0C) - we're sending 12 MIDI bytes
+MIDI message:
+  0x90, 0x24, 0x7F  # Note-on channel 0, note 36, velocity 127
+  0x99, 0x24, 0x7F  # Note-on channel 9, note 36, velocity 127
+  0x90, 0x24, 0x00  # Note-off channel 0, note 36
+  0x99, 0x24, 0x00  # Note-off channel 9, note 36
+
+Sysex bytes: [0x0C, 0x90, 0x24, 0x7F, 0x99, 0x24, 0x7F, 0x90, 0x24, 0x00, 0x99, 0x24, 0x00]
+```
+
+**Encoding Process:**
+1. Build the sysex payload as a list of bytes (length + MIDI message)
+2. Convert to a 520-bit integer (little-endian: first byte = bits 0-7)
+3. Encode the integer as 75 7-bit blocks (520 bits ÷ 7 ≈ 75)
+4. Add CRC (combined = value | (crc << 520))
+5. Send via SysEx message with header `F0 00 32 09 49 04 00 40 02`
+
+**Message Structure:**
+- Header: `F0 00 32 09 49 04 00 40 02` (note: routing is 3 bytes, not 4)
+- Address: 4 7-bit blocks (pad base address + 9)
+- Length: 4 7-bit blocks (always 520 * 2 = 1040)
+- Value: 77 7-bit blocks (75 for value + 2 for CRC)
+- Footer: `F7`
 
 # CRC
 
