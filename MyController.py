@@ -67,10 +67,6 @@ class MyController(ControlSurface):
 
     def __init__(self, c_instance):
         super(MyController, self).__init__(c_instance)
-        self.log_message("=" * 80)
-        self.log_message("SMK25II: NEW SESSION STARTING")
-        self.log_message("=" * 80)
-        self.log_message("SMK25II: Initializing...")
 
         # Hardware abstraction
         self._hw = Hardware(c_instance.send_midi, self.log_message)
@@ -89,11 +85,9 @@ class MyController(ControlSurface):
         # Initialize modes
         self._init_modes()
 
-        self.log_message("SMK25II: Initialization complete.")
 
     def _init_modes(self):
         """Initialize all mode instances."""
-        self.log_message("Initializing modes...")
 
         # Create mode instances
         self._modes[MODE_SESSION] = SessionMode(self, self._hw, MODE_SESSION)
@@ -109,7 +103,6 @@ class MyController(ControlSurface):
         # Create shift mode
         self._shift_mode = ShiftMode(self, self._hw)
 
-        self.log_message(f"Initialized {len(self._modes)} modes.")
 
     def update(self):
         """Called by Live after __init__."""
@@ -121,7 +114,6 @@ class MyController(ControlSurface):
 
     def _init_hardware(self):
         """Initialize hardware on first update."""
-        self.log_message("Initializing hardware...")
 
         # Enable bulk mode for faster init
         self._hw.set_bulk_mode(True)
@@ -143,7 +135,6 @@ class MyController(ControlSurface):
         # Request MIDI map rebuild to ensure routing is set up
         self.request_rebuild_midi_map()
 
-        self.log_message("Hardware initialized.")
 
     # =========================================================================
     # Mode management
@@ -223,7 +214,6 @@ class MyController(ControlSurface):
         if mode_number in self._modes:
             self._current_mode = self._modes[mode_number]
         else:
-            self.log_message(f"Mode {mode_number} not implemented, using placeholder")
             # Could create a PlaceholderMode here
             self._current_mode = None
 
@@ -292,43 +282,25 @@ class MyController(ControlSurface):
             cc = data1
             value = data2
 
-            # Shift knobs
+            # TEMP DEBUG: Log all CC messages
+            self.log_message(f"CC: CH={channel}, CC={cc}, VAL={value}")
+
+            # Shift knobs (channel 14)
             if channel == SHIFT_KNOB_CHANNEL:
                 knob_index = cc - SHIFT_KNOB_BASE_CC
                 if 0 <= knob_index < 8:
                     self.handle_shift_knob(knob_index, value)
-            # Device mode knobs (channel 2, CC 20-27)
-            elif channel == 2 and 20 <= cc <= 27 and self._current_mode_number == MODE_DEVICE:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Session mode knobs (channel 0, CC 21-28)
-            elif channel == 0 and 21 <= cc <= 28 and self._current_mode_number == MODE_SESSION:
-                knob_index = cc - 21
-                self._current_mode.handle_knob(knob_index, value)
-            # Drum mode knobs (channel 1, CC 20-27)
-            elif channel == 1 and 20 <= cc <= 27 and self._current_mode_number == MODE_DRUMS:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Mix mode knobs (channel 3, CC 20-27)
-            elif channel == 3 and 20 <= cc <= 27 and self._current_mode_number == MODE_MIX:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Sends mode knobs (channel 4, CC 20-27)
-            elif channel == 4 and 20 <= cc <= 27 and self._current_mode_number == MODE_SENDS:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Browser/Instruments mode knobs (channel 5, CC 20-27)
-            elif channel == 5 and 20 <= cc <= 27 and self._current_mode_number == MODE_INSTRUMENTS:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Crossfader mode knobs (channel 6, CC 20-27)
-            elif channel == 6 and 20 <= cc <= 27 and self._current_mode_number == MODE_6:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
-            # Drum Color mode knobs (channel 10, CC 20-27)
-            elif channel == 10 and 20 <= cc <= 27 and self._current_mode_number == MODE_DRUM_COLOR:
-                knob_index = cc - 20
-                self._current_mode.handle_knob(knob_index, value)
+            # All mode knobs (channel 0, CC 20-27 for most modes, CC 21-28 for Session)
+            elif channel == 0:
+                if self._current_mode_number == MODE_SESSION and 21 <= cc <= 28:
+                    # Session mode uses CCs 21-28
+                    knob_index = cc - 21
+                    self._current_mode.handle_knob(knob_index, value)
+                elif 20 <= cc <= 27:
+                    # All other modes use CCs 20-27
+                    knob_index = cc - 20
+                    if self._current_mode:
+                        self._current_mode.handle_knob(knob_index, value)
 
     def build_midi_map(self, midi_map_handle):
         """Build MIDI map for Live."""
@@ -352,27 +324,24 @@ class MyController(ControlSurface):
                 note
             )
 
-        # Forward knobs for each mode
-        knob_channels = [
-            (0, 21, 29),   # Session mode (CCs 21-28)
-            (1, 20, 28),   # Drums mode
-            (2, 20, 28),   # Device mode
-            (3, 20, 28),   # Mix mode
-            (4, 20, 28),   # Sends mode
-            (5, 20, 28),   # Browser mode
-            (6, 20, 28),   # Crossfader mode
-            (10, 20, 28),  # Drum Color mode
-            (14, 20, 28),  # Shift knobs
-        ]
+        # Forward knobs - all modes use channel 0
+        # CCs 20-28 (covers both 20-27 for most modes and 21-28 for Session)
+        for cc in range(20, 29):
+            Live.MidiMap.forward_midi_cc(
+                self._c_instance.handle(),
+                midi_map_handle,
+                0,  # All mode knobs on channel 0
+                cc
+            )
 
-        for channel, cc_start, cc_end in knob_channels:
-            for cc in range(cc_start, cc_end):
-                Live.MidiMap.forward_midi_cc(
-                    self._c_instance.handle(),
-                    midi_map_handle,
-                    channel,
-                    cc
-                )
+        # Shift knobs on channel 14
+        for cc in range(20, 28):
+            Live.MidiMap.forward_midi_cc(
+                self._c_instance.handle(),
+                midi_map_handle,
+                14,  # Shift knobs
+                cc
+            )
 
     # =========================================================================
     # Shift knob handlers (global navigation)
@@ -412,7 +381,6 @@ class MyController(ControlSurface):
             return -1  # Counter-clockwise
         else:
             # Should never happen, log error
-            self.log_message(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def _shift_scroll_horizontal(self, delta):
@@ -513,7 +481,6 @@ class MyController(ControlSurface):
 
     def disconnect(self):
         """Cleanup when script is unloaded."""
-        self.log_message("SMK25II: Disconnecting...")
 
         # Disconnect current mode
         if self._current_mode:
@@ -524,4 +491,3 @@ class MyController(ControlSurface):
             self._web_server.stop()
 
         super(MyController, self).disconnect()
-        self.log_message("SMK25II: Disconnected.")

@@ -16,8 +16,12 @@ class ShiftMode(ModeBase):
         super().__init__(controller, hardware, mode_number=-1)
 
     def configure(self):
-        """Configure shift page pads."""
-        # Configure shift pads as MCP type
+        """One-time setup for shift mode."""
+        pass  # No listeners needed
+
+    def update(self):
+        """Configure hardware and update colors."""
+        # Configure shift pads (cached)
         for i in range(16):
             self._hw.configure_pad(
                 pad_index=i,
@@ -26,14 +30,10 @@ class ShiftMode(ModeBase):
                 note=SHIFT_PAD_BASE_NOTE + i,
                 shifted=True
             )
-            # Set LED state to ON
             self._hw.set_pad_led_state(i, 255, shifted=True)
 
-    def update(self):
-        """Update shift page colors to show selected mode."""
+        # Update colors to show selected mode
         current_mode = self._controller.get_current_mode()
-
-        # All 16 pads represent modes 0-15
         for i in range(16):
             if i == current_mode:
                 self._hw.set_pad_color(i, COLOR_WHITE, shifted=True)

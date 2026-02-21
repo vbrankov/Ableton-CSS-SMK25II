@@ -12,7 +12,7 @@ DRUM_BASE_NOTE = 36  # C1
 COLOR_DRUM = 0x00A0FF  # Orange
 
 # Knob configuration for device control
-DRUM_KNOB_CHANNEL = 1  # Channel 2
+DRUM_KNOB_CHANNEL = 0  # Channel 2
 DRUM_KNOB_BASE_CC = 20  # CC 20-27
 
 
@@ -24,16 +24,13 @@ class DrumsMode(ModeBase):
         self._pad_colors = None  # Will be loaded from config if available
 
     def configure(self):
-        """Configure hardware for drums mode."""
-        self.log("Configuring drums mode...")
-
-        # Clear hardware cache
-        self._hw.clear_cache()
-
+        """One-time setup for drums mode."""
         # Load colors from drum_color config if available
         self._load_colors()
 
-        # Configure all pads as drum notes
+    def update(self):
+        """Configure hardware and update colors."""
+        # Configure all pads as drum notes (cached)
         # Swap rows: top row (0-7) gets upper notes (44-51), bottom row (8-15) gets lower notes (36-43)
         for i in range(16):
             if i < 8:
@@ -50,11 +47,13 @@ class DrumsMode(ModeBase):
                 note=note,
                 shifted=False
             )
+            # Set all LEDs to ON
+            self._hw.set_pad_led_state(i, 255, shifted=False)
             # Set color - use saved color if available, otherwise orange
             color = self._pad_colors[i] if self._pad_colors else COLOR_DRUM
             self._hw.set_pad_color(i, color, shifted=False)
 
-        # Configure knobs for device control (blue hand)
+        # Configure knobs for device control (cached)
         for i in range(8):
             self._hw.configure_knob(
                 knob_index=i,
@@ -62,12 +61,6 @@ class DrumsMode(ModeBase):
                 cc=DRUM_KNOB_BASE_CC + i,
                 shifted=False
             )
-
-        self.log("Drums mode configured.")
-
-    def update(self):
-        """Update drum mode (no dynamic updates needed)."""
-        pass
 
     def handle_pad(self, pad_index, velocity):
         """Handle pad press (notes sent automatically by hardware)."""
@@ -115,7 +108,6 @@ class DrumsMode(ModeBase):
             new_value = max(param.min, min(param.max, new_value))
             param.value = new_value
 
-            self.log(f"Knob {knob_index}: {param.name} = {new_value:.2f}")
 
     def _decode_relative_value(self, value):
         """Decode relative CC value to delta."""
@@ -127,7 +119,6 @@ class DrumsMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def _load_colors(self):
@@ -159,16 +150,16 @@ class DrumsMode(ModeBase):
                     # Convert HSV to RGB for each pad
                     hsv_colors = instrument_colors[instrument_id]
                     self._pad_colors = [self._hsv_to_rgb(*hsv) for hsv in hsv_colors]
-                    self.log(f"Loaded colors for instrument: {instrument_id}")
 
         except Exception as e:
-            self.log(f"Could not load colors: {e}")
+            pass  # Cannot load colors
 
     def _get_instrument_id(self, device):
         """Get a unique identifier for the instrument device."""
         try:
             return f"{device.class_name}:{device.name}"
         except:
+            return "unknown"
             return "unknown"
 
     def _hsv_to_rgb(self, h, s, v):
@@ -181,4 +172,3 @@ class DrumsMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving drums mode."""
-        self.log("Disconnecting drums mode...")

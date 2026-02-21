@@ -13,7 +13,7 @@ SENDS_PAD_CHANNEL = 9  # Channel 5 (0-indexed)
 SENDS_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
-SENDS_KNOB_CHANNEL = 4  # Channel 5
+SENDS_KNOB_CHANNEL = 0  # Channel 5
 SENDS_KNOB_BASE_CC = 20  # CC 20-27
 
 # Pad indices
@@ -41,12 +41,31 @@ class SendsMode(ModeBase):
         self._track_listeners = []  # Track-related listeners
 
     def configure(self):
-        """Configure hardware for sends mode."""
-        self.log("Configuring sends mode...")
+        """One-time setup for sends mode."""
+        # Add listeners for track changes
+        self._add_track_listeners()
 
-        # Clear hardware cache
-        self._hw.clear_cache()
+        # Set initial red box position
+        self._controller.set_session_highlight(
+            self._track_offset,  # track_offset
+            0,  # scene_offset
+            8,  # width (8 tracks)
+            1,  # height (1 row for top row pads)
+            False  # include_return_tracks
+        )
 
+    def _configure_sends_knobs(self):
+        """Configure 8 knobs for send levels."""
+        for i in range(8):
+            self._hw.configure_knob(
+                knob_index=i,
+                channel=SENDS_KNOB_CHANNEL,
+                cc=SENDS_KNOB_BASE_CC + i,
+                shifted=False
+            )
+
+    def update(self):
+        """Configure hardware and update pad colors."""
         # Configure all 16 pads as notes
         for i in range(16):
             self._hw.configure_pad(
@@ -64,36 +83,7 @@ class SendsMode(ModeBase):
         # Configure knobs as relative (CW type)
         self._configure_sends_knobs()
 
-        # Add listeners for track changes
-        self._add_track_listeners()
-
-        # Set initial red box position
-        self._controller.set_session_highlight(
-            self._track_offset,  # track_offset
-            0,  # scene_offset
-            8,  # width (8 tracks)
-            1,  # height (1 scene)
-            False  # include_return_tracks
-        )
-
-        # Initial update
-        self.update()
-
-        self.log("Sends mode configured.")
-
-    def _configure_sends_knobs(self):
-        """Configure 8 knobs for send levels."""
-        self.log("Configuring sends knobs...")
-        for i in range(8):
-            self._hw.configure_knob(
-                knob_index=i,
-                channel=SENDS_KNOB_CHANNEL,
-                cc=SENDS_KNOB_BASE_CC + i,
-                shifted=False
-            )
-
-    def update(self):
-        """Update pad colors and knob mappings."""
+        # Update colors based on current state
         song = self.song()
         tracks = song.visible_tracks
 
@@ -135,7 +125,6 @@ class SendsMode(ModeBase):
         # Top row: send selection (0-7)
         if 0 <= pad_index <= 7:
             self._send_index = pad_index
-            self.log(f"Selected send {self._send_index}")
             self.update()
 
         # Bottom row: functions (8-15)
@@ -154,12 +143,10 @@ class SendsMode(ModeBase):
         elif pad_index == PAD_UNDO:
             if song.can_undo:
                 song.undo()
-                self.log("Undo")
 
         elif pad_index == PAD_REDO:
             if song.can_redo:
                 song.redo()
-                self.log("Redo")
 
     def handle_knob(self, knob_index, value):
         """Handle knob turn in sends mode - control send level."""
@@ -206,7 +193,6 @@ class SendsMode(ModeBase):
         if new_index != self._send_index:
             self._send_index = new_index
             self.update()
-            self.log(f"Send index: {self._send_index}")
 
     def _navigate_tracks(self, delta):
         """Navigate tracks by delta amount."""
@@ -237,7 +223,6 @@ class SendsMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def _add_track_listeners(self):
@@ -246,7 +231,6 @@ class SendsMode(ModeBase):
 
         # Listen for track list changes
         def tracks_changed():
-            self.log("Tracks changed")
             self._remove_track_listeners()
             self._add_track_listeners()
             self.update()
@@ -269,5 +253,4 @@ class SendsMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving sends mode."""
-        self.log("Disconnecting sends mode...")
         self._remove_track_listeners()

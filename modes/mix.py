@@ -13,7 +13,7 @@ MIX_PAD_CHANNEL = 9  # Channel 4 (0-indexed)
 MIX_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
-MIX_KNOB_CHANNEL = 3  # Channel 4
+MIX_KNOB_CHANNEL = 0  # Channel 4
 MIX_KNOB_BASE_CC = 20  # CC 20-27
 
 # Pad indices
@@ -45,12 +45,31 @@ class MixMode(ModeBase):
         self._track_listeners = []  # Track-related listeners
 
     def configure(self):
-        """Configure hardware for mix mode."""
-        self.log("Configuring mix mode...")
+        """One-time setup for mix mode."""
+        # Add listeners for track changes
+        self._add_track_listeners()
 
-        # Clear hardware cache
-        self._hw.clear_cache()
+        # Set initial red box position
+        self._controller.set_session_highlight(
+            self._track_offset,  # track_offset
+            0,  # scene_offset
+            8,  # width (8 tracks)
+            1,  # height (1 row for top row pads)
+            False  # include_return_tracks
+        )
 
+    def _configure_mix_knobs(self):
+        """Configure 8 knobs for track volumes."""
+        for i in range(8):
+            self._hw.configure_knob(
+                knob_index=i,
+                channel=MIX_KNOB_CHANNEL,
+                cc=MIX_KNOB_BASE_CC + i,
+                shifted=False
+            )
+
+    def update(self):
+        """Configure hardware and update pad colors."""
         # Configure all 16 pads as notes
         for i in range(16):
             self._hw.configure_pad(
@@ -68,36 +87,7 @@ class MixMode(ModeBase):
         # Configure knobs as relative (CW type)
         self._configure_mix_knobs()
 
-        # Add listeners for track changes
-        self._add_track_listeners()
-
-        # Set initial red box position
-        self._controller.set_session_highlight(
-            self._track_offset,  # track_offset
-            0,  # scene_offset
-            8,  # width (8 tracks)
-            1,  # height (1 scene)
-            False  # include_return_tracks
-        )
-
-        # Initial update
-        self.update()
-
-        self.log("Mix mode configured.")
-
-    def _configure_mix_knobs(self):
-        """Configure 8 knobs for track volumes."""
-        self.log("Configuring mix knobs...")
-        for i in range(8):
-            self._hw.configure_knob(
-                knob_index=i,
-                channel=MIX_KNOB_CHANNEL,
-                cc=MIX_KNOB_BASE_CC + i,
-                shifted=False
-            )
-
-    def update(self):
-        """Update pad colors and knob mappings."""
+        # Update colors based on current state
         song = self.song()
         tracks = song.visible_tracks
 
@@ -171,12 +161,10 @@ class MixMode(ModeBase):
         # Bottom row: functions (8-15)
         elif pad_index == PAD_MODE_MUTE:
             self._mix_mode = MODE_MUTE
-            self.log("Mix mode: Mute")
             self.update()
 
         elif pad_index == PAD_MODE_SOLO:
             self._mix_mode = MODE_SOLO
-            self.log("Mix mode: Solo")
             self.update()
 
         elif pad_index == PAD_TRACK_LEFT:
@@ -188,12 +176,10 @@ class MixMode(ModeBase):
         elif pad_index == PAD_UNDO:
             if song.can_undo:
                 song.undo()
-                self.log("Undo")
 
         elif pad_index == PAD_REDO:
             if song.can_redo:
                 song.redo()
-                self.log("Redo")
 
     def handle_knob(self, knob_index, value):
         """Handle knob turn in mix mode - control track volume."""
@@ -219,7 +205,6 @@ class MixMode(ModeBase):
                 new_value = max(volume_param.min, min(volume_param.max, current + delta * step_size))
                 volume_param.value = new_value
 
-                self.log(f"Track {track.name}: volume = {new_value:.2f}")
 
     def _navigate_tracks(self, delta):
         """Navigate tracks by delta amount."""
@@ -250,7 +235,6 @@ class MixMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def _dim_color(self, color):
@@ -300,7 +284,6 @@ class MixMode(ModeBase):
 
         # Listen for track list changes
         def tracks_changed():
-            self.log("Tracks changed")
             self._remove_track_listeners()
             self._add_track_listeners()
             self.update()
@@ -345,5 +328,4 @@ class MixMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving mix mode."""
-        self.log("Disconnecting mix mode...")
         self._remove_track_listeners()

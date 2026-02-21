@@ -14,7 +14,7 @@ DEVICE_PAD_CHANNEL = 9  # Channel 3 (0-indexed)
 DEVICE_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
-DEVICE_KNOB_CHANNEL = 2  # Channel 3
+DEVICE_KNOB_CHANNEL = 0  # Channel 3
 DEVICE_KNOB_BASE_CC = 20  # CC 20-27
 
 # Pad indices
@@ -43,40 +43,12 @@ class DeviceMode(ModeBase):
         self._devices_listener = None  # Current track's devices listener
 
     def configure(self):
-        """Configure hardware for device mode."""
-        self.log("Configuring device mode...")
-
-        # Clear hardware cache
-        self._hw.clear_cache()
-
-        # Configure all 16 pads as MCP (don't trigger notes)
-        for i in range(16):
-            self._hw.configure_pad(
-                pad_index=i,
-                pad_type=PAD_TYPE_NOTE,
-                channel=DEVICE_PAD_CHANNEL,
-                note=DEVICE_PAD_BASE_NOTE + i,
-                shifted=False
-            )
-
-        # Set all LEDs to ON (255)
-        for i in range(16):
-            self._hw.set_pad_led_state(i, 255, shifted=False)
-
-        # Configure knobs as relative (CW type)
-        self._configure_device_knobs()
-
+        """One-time setup for device mode."""
         # Add listeners for device changes
         self._add_device_listeners()
 
-        # Initial update
-        self.update()
-
-        self.log("Device mode configured.")
-
     def _configure_device_knobs(self):
         """Configure 8 knobs for device parameters."""
-        self.log("Configuring device knobs...")
         for i in range(8):
             self._hw.configure_knob(
                 knob_index=i,
@@ -86,7 +58,22 @@ class DeviceMode(ModeBase):
             )
 
     def update(self):
-        """Update pad colors and knob mappings."""
+        """Configure hardware and update pad colors."""
+        # Configure pads (cached)
+        for i in range(16):
+            self._hw.configure_pad(
+                pad_index=i,
+                pad_type=PAD_TYPE_NOTE,
+                channel=DEVICE_PAD_CHANNEL,
+                note=DEVICE_PAD_BASE_NOTE + i,
+                shifted=False
+            )
+            self._hw.set_pad_led_state(i, 255, shifted=False)
+
+        # Configure knobs (cached)
+        self._configure_device_knobs()
+
+        # Update colors based on device state
         song = self.song()
         track = song.view.selected_track
 
@@ -236,8 +223,8 @@ class DeviceMode(ModeBase):
             # Clamp to valid range
             new_value = max(param.min, min(param.max, new_value))
             param.value = new_value
-
         else:
+            pass  # No parameter at this knob position
 
     def _navigate_tracks(self, delta):
         """Navigate tracks by delta amount."""
@@ -269,7 +256,6 @@ class DeviceMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def _add_device_listeners(self):
@@ -279,7 +265,6 @@ class DeviceMode(ModeBase):
 
         # Listen for track changes
         def track_changed():
-            self.log("Track changed")
             self._add_devices_listener()  # Re-add devices listener for new track
             self.update()
 
@@ -291,7 +276,6 @@ class DeviceMode(ModeBase):
 
         # Listen for appointed device changes
         def appointed_device_changed():
-            self.log("Appointed device changed")
             # Sync device index with appointed device
             appointed = song.appointed_device
             if appointed:
@@ -299,7 +283,6 @@ class DeviceMode(ModeBase):
                 devices = list(track.devices) if hasattr(track, 'devices') else []
                 try:
                     self._device_index = devices.index(appointed)
-                    self.log(f"Synced device index to {self._device_index}")
                 except ValueError:
                     # Appointed device not in current track's devices
                     pass
@@ -323,7 +306,6 @@ class DeviceMode(ModeBase):
 
         # Add new devices listener for current track
         def devices_changed():
-            self.log("Devices list changed")
             self.update()
 
         try:
@@ -332,9 +314,8 @@ class DeviceMode(ModeBase):
             if hasattr(track, 'devices'):
                 track.add_devices_listener(devices_changed)
                 self._devices_listener = devices_changed
-                self.log("Added devices listener")
         except:
-            self.log("Failed to add devices listener")
+            pass  # Cannot add devices listener
 
     def _remove_device_listeners(self):
         """Remove device listeners."""
@@ -406,5 +387,4 @@ class DeviceMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving device mode."""
-        self.log("Disconnecting device mode...")
         self._remove_device_listeners()

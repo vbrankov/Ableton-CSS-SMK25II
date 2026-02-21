@@ -9,7 +9,7 @@ from ..Hardware import PAD_TYPE_CUSTOM, PAD_TYPE_NOTE
 
 # Drum mode settings
 DRUM_COLOR_PAD_CHANNEL = 9  # Channel 10 (standard MIDI drum channel)
-DRUM_COLOR_KNOB_CHANNEL = 10  # Channel 11
+DRUM_COLOR_KNOB_CHANNEL = 0  # Channel 11
 DRUM_BASE_NOTE = 36  # C1
 DRUM_KNOB_BASE_CC = 20  # CC 20-27
 
@@ -35,12 +35,7 @@ class DrumColorMode(ModeBase):
         self._device_listener = None  # Device change listener
 
     def configure(self):
-        """Configure hardware for drum color mode."""
-        self.log("Configuring drum color mode...")
-
-        # Clear hardware cache
-        self._hw.clear_cache()
-
+        """One-time setup for drum color mode."""
         # Initialize all pad press/release times to 0
         self._pad_press_times = {i: 0 for i in range(16)}
         self._pad_release_times = {i: 0 for i in range(16)}
@@ -51,7 +46,12 @@ class DrumColorMode(ModeBase):
         # Get current instrument and load its colors
         self._update_instrument()
 
-        # Configure all pads as regular NOTE pads on channel 9
+        # Add device change listener
+        self._add_device_listener()
+
+    def update(self):
+        """Configure hardware and update pad colors."""
+        # Configure all pads as regular NOTE pads on channel 9 (cached)
         # Same layout as Mode 8: top row (0-7) = upper notes (44-51), bottom row (8-15) = lower notes (36-43)
         for i in range(16):
             if i < 8:
@@ -69,12 +69,10 @@ class DrumColorMode(ModeBase):
                 note=note,
                 shifted=False
             )
-
-        # Set all LEDs to ON (255)
-        for i in range(16):
+            # Set LED to ON
             self._hw.set_pad_led_state(i, 255, shifted=False)
 
-        # Configure knobs as relative (CW type)
+        # Configure knobs as relative (cached)
         for i in range(8):
             self._hw.configure_knob(
                 knob_index=i,
@@ -83,16 +81,7 @@ class DrumColorMode(ModeBase):
                 shifted=False
             )
 
-        # Add device change listener
-        self._add_device_listener()
-
-        # Initial color update
-        self.update()
-
-        self.log("Drum color mode configured.")
-
-    def update(self):
-        """Update pad colors based on current HSV values."""
+        # Update pad colors based on current HSV values
         for i in range(16):
             h, s, v = self._pad_colors_hsv[i]
             rgb = self._hsv_to_rgb(h, s, v)
@@ -343,7 +332,6 @@ class DrumColorMode(ModeBase):
             # Load colors from history
             self._pad_colors_hsv = list(self._instrument_colors[instrument_id])
             self.update()
-            self.log(f"Loaded colors from history: {instrument_id}")
 
     def _add_device_listener(self):
         """Add listener for device changes."""
@@ -386,11 +374,9 @@ class DrumColorMode(ModeBase):
             if instrument_id in self._instrument_colors:
                 # Load saved colors
                 self._pad_colors_hsv = list(self._instrument_colors[instrument_id])
-                self.log(f"Loaded saved colors for instrument: {instrument_id}")
             else:
                 # New instrument - use current colors (last shown)
                 self._save_current_instrument_colors()
-                self.log(f"New instrument, assigned current colors: {instrument_id}")
 
             # Update history
             if instrument_id in self._history:
@@ -437,12 +423,10 @@ class DrumColorMode(ModeBase):
                     data = json.load(f)
                     self._instrument_colors = data.get('instruments', {})
                     self._history = data.get('history', [])
-                    self.log(f"Loaded config from {self._config_file}")
             else:
-                self.log(f"No existing config, will create: {self._config_file}")
+                pass  # Config file doesn't exist
 
         except Exception as e:
-            self.log(f"ERROR loading config: {e}")
             self._instrument_colors = {}
             self._history = []
 
@@ -459,10 +443,9 @@ class DrumColorMode(ModeBase):
             }
             with open(self._config_file, 'w') as f:
                 json.dump(data, f, indent=2)
-            self.log(f"Saved config to {self._config_file}")
 
         except Exception as e:
-            self.log(f"ERROR saving config: {e}")
+            pass  # Cannot save config
 
     def _hsv_to_rgb(self, h, s, v):
         """Convert HSV to RGB integer (for LED)."""
@@ -484,12 +467,10 @@ class DrumColorMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def disconnect(self):
         """Cleanup when leaving drum color mode."""
-        self.log("Disconnecting drum color mode...")
         # Remove device listener
         self._remove_device_listener()
         # Save final state

@@ -9,7 +9,7 @@ from ..Hardware import PAD_TYPE_NOTE
 # Mode configuration
 BROWSER_PAD_CHANNEL = 9  # Channel 6
 BROWSER_PAD_BASE_NOTE = 36  # C1
-BROWSER_KNOB_CHANNEL = 5  # Channel 6
+BROWSER_KNOB_CHANNEL = 0  # Channel 6
 BROWSER_KNOB_BASE_CC = 20  # CC 20-27
 
 # Pad hold timeout for memorization (1 second)
@@ -33,13 +33,16 @@ class BrowserMode(ModeBase):
         self._browser_stack = []  # Stack of (items, index) for going back
 
     def configure(self):
-        """Configure hardware for browser mode."""
-        self.log("Configuring browser mode...")
+        """One-time setup for browser mode."""
+        # Load configuration
+        self._load_config()
 
-        # Clear hardware cache
-        self._hw.clear_cache()
+        # Initialize browser
+        self._init_browser()
 
-        # Configure all 16 pads as MCP (don't trigger notes)
+    def update(self):
+        """Configure hardware and update colors."""
+        # Configure pads (cached)
         for i in range(16):
             self._hw.configure_pad(
                 pad_index=i,
@@ -48,13 +51,10 @@ class BrowserMode(ModeBase):
                 note=BROWSER_PAD_BASE_NOTE + i,
                 shifted=False
             )
-
-        # Set all LEDs to dim white (or off)
-        for i in range(16):
             self._hw.set_pad_led_state(i, 128, shifted=False)
             self._hw.set_pad_color(i, 0x202020, shifted=False)  # Dim white
 
-        # Configure knobs as relative (CW type)
+        # Configure knobs (cached)
         for i in range(8):
             self._hw.configure_knob(
                 knob_index=i,
@@ -62,18 +62,6 @@ class BrowserMode(ModeBase):
                 cc=BROWSER_KNOB_BASE_CC + i,
                 shifted=False
             )
-
-        # Load configuration
-        self._load_config()
-
-        # Initialize browser
-        self._init_browser()
-
-        self.log("Browser mode configured.")
-
-    def update(self):
-        """Update mode state (not much visual feedback needed)."""
-        pass
 
     def handle_pad(self, pad_index, velocity):
         """Handle pad press/release for combination memorization."""
@@ -141,10 +129,8 @@ class BrowserMode(ModeBase):
             song = self.song()
             if delta > 0 and song.can_redo:
                 song.redo()
-                self.log("Redo")
             elif delta < 0 and song.can_undo:
                 song.undo()
-                self.log("Undo")
 
     def _handle_pad_tap(self):
         """Handle quick tap - add item based on current combination."""
@@ -154,13 +140,12 @@ class BrowserMode(ModeBase):
             # Load memorized item
             item_path = self._memorized_items[combination]
             self._load_browser_item(item_path)
-            self.log(f"Loading memorized item: {item_path}")
         elif combination == "":
             # No pads pressed - this shouldn't happen in tap handler
             pass
         else:
             # No memorized item for this combination
-            self.log(f"No item memorized for combination: {combination}")
+            pass
 
     def _check_memorization(self):
         """Check if any pads have been held >= 1 second for memorization."""
@@ -182,9 +167,8 @@ class BrowserMode(ModeBase):
             if item_path:
                 self._memorized_items[combination] = item_path
                 self._save_config()
-                self.log(f"✓ MEMORIZED '{item_path}' to pads: {combination}")
             else:
-                self.log(f"No item selected to memorize")
+                pass  # No item selected to memorize
 
     def _get_current_combination(self):
         """Get current pad combination as sorted comma-separated string."""
@@ -208,7 +192,6 @@ class BrowserMode(ModeBase):
         if new_index < len(tracks):
             song.view.selected_track = tracks[new_index]
             self._current_device_index = 0
-            self.log(f"Selected track: {tracks[new_index].name}")
 
     def _add_track(self):
         """Add a new MIDI track."""
@@ -216,10 +199,8 @@ class BrowserMode(ModeBase):
         try:
             current_index = list(song.tracks).index(song.view.selected_track)
             song.create_midi_track(current_index + 1)
-            self.log("Added MIDI track")
         except:
             song.create_midi_track(-1)
-            self.log("Added MIDI track at end")
 
     def _delete_track(self):
         """Delete current track."""
@@ -228,9 +209,8 @@ class BrowserMode(ModeBase):
             track = song.view.selected_track
             track_name = track.name
             song.delete_track(track)
-            self.log(f"Deleted track: {track_name}")
         except Exception as e:
-            self.log(f"Cannot delete track: {e}")
+            pass  # Cannot delete track
 
     def _init_browser(self):
         """Initialize browser at true top level with all categories."""
@@ -238,7 +218,6 @@ class BrowserMode(ModeBase):
             app = self.application()
 
             if not hasattr(app, 'browser'):
-                self.log("Browser not available in this Live version")
                 self._browser_items = []
                 return
 
@@ -266,11 +245,8 @@ class BrowserMode(ModeBase):
             self._browser_index = 0
             self._browser_stack = []
 
-            self.log(f"Browser initialized with {len(self._browser_items)} categories")
         except Exception as e:
-            self.log(f"ERROR initializing browser: {e}")
             import traceback
-            self.log(f"Traceback: {traceback.format_exc()}")
             self._browser_items = []
 
     def _navigate_browser_hierarchy(self, delta):
@@ -283,12 +259,10 @@ class BrowserMode(ModeBase):
                 # Exit folder (go back)
                 self._exit_folder()
         except Exception as e:
-            self.log(f"ERROR navigating hierarchy: {e}")
-
+            pass
     def _enter_current_folder(self):
         """Enter the currently selected folder."""
         if not self._browser_items or self._browser_index >= len(self._browser_items):
-            self.log("No item selected to enter")
             return
 
         current_item = self._browser_items[self._browser_index]
@@ -308,20 +282,19 @@ class BrowserMode(ModeBase):
                     # Send updated browser levels
                     self._send_browser_levels()
                 else:
+                    pass  # Item has no children
             except Exception as e:
-                self.log(f"Cannot enter item: {e}")
+                pass  # Cannot enter item
         else:
-            self.log("Current item cannot be entered (no children)")
+            pass  # Current item cannot be entered
 
     def _exit_folder(self):
         """Exit current folder and go back to parent."""
         if not self._browser_stack:
-            self.log("Already at root level")
             return
 
         # Restore previous state
         self._browser_items, self._browser_index = self._browser_stack.pop()
-        self.log(f"Exited to parent folder ({len(self._browser_items)} items)")
 
         # Send updated browser levels
         self._send_browser_levels()
@@ -329,7 +302,6 @@ class BrowserMode(ModeBase):
     def _scroll_browser_items(self, delta):
         """Scroll browser items at current level."""
         if not self._browser_items:
-            self.log("No browser items to scroll")
             return
 
         # Update index
@@ -343,7 +315,6 @@ class BrowserMode(ModeBase):
             is_folder = " [folder]" if (hasattr(item, 'is_folder') and item.is_folder) else ""
             item_type = "folder" if (hasattr(item, 'is_folder') and item.is_folder) else "item"
 
-            self.log(f"Browser: {item_name}{is_folder} ({self._browser_index + 1}/{len(self._browser_items)})")
 
             # Try to preview item in Ableton browser
             self._preview_item(item)
@@ -412,14 +383,13 @@ class BrowserMode(ModeBase):
                 # Load item onto current track
                 if hasattr(item, 'is_loadable') and item.is_loadable:
                     browser.load_item(track)
-                    self.log(f"Loaded: {item.name if hasattr(item, 'name') else item_path}")
                 else:
-                    self.log(f"Item not loadable: {item_path}")
+                    pass  # Item not loadable
             else:
-                self.log(f"Item not found: {item_path}")
+                pass  # Item path invalid
 
         except Exception as e:
-            self.log(f"ERROR loading item: {e}")
+            pass
 
     def _preview_item(self, item):
         """Preview/select an item in the Ableton browser."""
@@ -457,7 +427,6 @@ class BrowserMode(ModeBase):
 
             return None
         except Exception as e:
-            self.log(f"ERROR finding item: {e}")
             return None
 
     def _navigate_devices(self, delta):
@@ -471,7 +440,6 @@ class BrowserMode(ModeBase):
 
         self._current_device_index = (self._current_device_index + delta) % len(devices)
         song.view.select_device(devices[self._current_device_index])
-        self.log(f"Selected device: {devices[self._current_device_index].name}")
 
     def _reorder_devices(self, delta):
         """Reorder selected device (move left/right)."""
@@ -490,11 +458,10 @@ class BrowserMode(ModeBase):
                 # Move device (one position at a time)
                 device_to_move = devices[self._current_device_index]
                 self._current_device_index = new_index
-                self.log(f"Device reorder: Moving {device_to_move.name} to position {new_index + 1}")
                 # Note: Full implementation would use track method to actually move the device
                 # For now, just update index - actual device moving would need API support
             except Exception as e:
-                self.log(f"ERROR reordering device: {e}")
+                pass
 
     def _delete_device(self):
         """Delete currently selected device."""
@@ -503,7 +470,6 @@ class BrowserMode(ModeBase):
         devices = list(track.devices) if hasattr(track, 'devices') else []
 
         if not devices or self._current_device_index >= len(devices):
-            self.log("No device to delete")
             return
 
         try:
@@ -511,10 +477,8 @@ class BrowserMode(ModeBase):
             device_name = device.name
             track.delete_device(self._current_device_index)
             self._current_device_index = max(0, min(self._current_device_index, len(devices) - 2))
-            self.log(f"Deleted device: {device_name}")
         except Exception as e:
-            self.log(f"ERROR deleting device: {e}")
-
+            pass
     def _load_config(self):
         """Load memorized items from config file."""
         try:
@@ -530,12 +494,10 @@ class BrowserMode(ModeBase):
                 with open(self._config_file, 'r') as f:
                     data = json.load(f)
                     self._memorized_items = data.get('memorized_items', {})
-                    self.log(f"Loaded config from {self._config_file}")
             else:
-                self.log(f"No existing config, will create: {self._config_file}")
+                pass  # Config file doesn't exist
 
         except Exception as e:
-            self.log(f"ERROR loading config: {e}")
             self._memorized_items = {}
 
     def _save_config(self):
@@ -550,11 +512,9 @@ class BrowserMode(ModeBase):
             }
             with open(self._config_file, 'w') as f:
                 json.dump(data, f, indent=2)
-            self.log(f"Saved config to {self._config_file}")
 
         except Exception as e:
-            self.log(f"ERROR saving config: {e}")
-
+            pass
     def _decode_relative_value(self, value):
         """Decode relative CC value to delta."""
         if value == 0x7F:
@@ -562,7 +522,6 @@ class BrowserMode(ModeBase):
         elif value == 0x00:
             return -1  # Counter-clockwise
         else:
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     def get_pad_colors(self):
@@ -649,5 +608,4 @@ class BrowserMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving browser mode."""
-        self.log("Disconnecting browser mode...")
         self._save_config()

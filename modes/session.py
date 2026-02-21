@@ -51,36 +51,13 @@ class SessionMode(ModeBase):
         self._clip_slot_listeners = []
 
     def configure(self):
-        """Configure hardware for session mode."""
-        self.log("Configuring session mode...")
-
-        # Clear hardware cache
-        self._hw.clear_cache()
-
-        # Configure pads as MCP type
-        for i in range(16):
-            self._hw.configure_pad(
-                pad_index=i,
-                pad_type=PAD_TYPE_NOTE,
-                channel=TRACK_CTRL_CHANNEL,
-                note=TRACK_CTRL_BASE_NOTE + i,
-                shifted=False
-            )
-            # Set LED state to ON
-            self._hw.set_pad_led_state(i, 255, shifted=False)
-
-        # Configure knobs
-        self._configure_session_knobs()
-
+        """One-time setup for session mode."""
         # Set session highlight
         self._set_session_highlight()
 
         # Add listeners
         self._add_clip_slot_listeners()
         self._add_track_list_listener()
-
-        # Initial color update
-        self.update()
 
         # Schedule a delayed update to handle Ableton startup timing issues
         # Sometimes track colors aren't fully initialized on first update
@@ -89,10 +66,23 @@ class SessionMode(ModeBase):
         # Start periodic updates for flashing
         self._schedule_next_update()
 
-        self.log("Session mode configured.")
-
     def update(self):
-        """Update pad colors based on clip states."""
+        """Configure hardware and update pad colors."""
+        # Configure pads (cached - won't resend if already configured)
+        for i in range(16):
+            self._hw.configure_pad(
+                pad_index=i,
+                pad_type=PAD_TYPE_NOTE,
+                channel=TRACK_CTRL_CHANNEL,
+                note=TRACK_CTRL_BASE_NOTE + i,
+                shifted=False
+            )
+            self._hw.set_pad_led_state(i, 255, shifted=False)
+
+        # Configure knobs (cached)
+        self._configure_session_knobs()
+
+        # Update colors based on clip states
         song = self.song()
         tracks = song.visible_tracks
 
@@ -122,7 +112,6 @@ class SessionMode(ModeBase):
 
     def _delayed_startup_update(self):
         """Delayed update after configure to handle Ableton startup timing."""
-        self.log("Delayed startup update - refreshing colors...")
         self.update()
 
     def handle_pad(self, pad_index, velocity):
@@ -231,7 +220,6 @@ class SessionMode(ModeBase):
 
     def disconnect(self):
         """Cleanup when leaving session mode."""
-        self.log("Disconnecting session mode...")
         self._remove_clip_slot_listeners()
         self._remove_track_list_listener()
 
@@ -241,7 +229,6 @@ class SessionMode(ModeBase):
 
     def _configure_session_knobs(self):
         """Configure knobs for session mode."""
-        self.log("Configuring session knobs...")
         for i in range(8):
             self._hw.configure_knob(
                 knob_index=i,
@@ -314,14 +301,12 @@ class SessionMode(ModeBase):
         try:
             # Check if track is valid
             if not track or not hasattr(track, 'color'):
-                self.log(f"Track invalid or no color attribute: {track}")
                 return 0x808080  # Default grey
 
             ableton_color = track.color
 
             # Validate color value
             if ableton_color is None or ableton_color < 0:
-                self.log(f"Track {track.name} has invalid color: {ableton_color}")
                 return 0x808080
 
             r = (ableton_color >> 16) & 0xFF
@@ -330,7 +315,6 @@ class SessionMode(ModeBase):
             hw_color = r | (g << 8) | (b << 16)
             return hw_color
         except Exception as e:
-            self.log(f"Error getting track color: {e}")
             return 0x808080
 
     def _darken_color(self, rgb, brightness):
@@ -410,7 +394,6 @@ class SessionMode(ModeBase):
         song = self.song()
         new_offset = max(0, min(len(song.scenes) - TRACK_CTRL_ROWS,
                                 self._session_scene_offset + delta))
-        self.log(f"Scene offset: {self._session_scene_offset} -> {new_offset}")
         if new_offset != self._session_scene_offset:
             self._session_scene_offset = new_offset
             self._set_session_highlight()
@@ -420,11 +403,9 @@ class SessionMode(ModeBase):
 
     def _scroll_view_horizontal(self, delta):
         """Scroll session box horizontally."""
-        self.log(f"Scroll horizontal: delta={delta}")
         song = self.song()
         new_offset = max(0, min(len(song.visible_tracks) - TRACK_CTRL_COLS,
                                 self._session_track_offset + delta))
-        self.log(f"Track offset: {self._session_track_offset} -> {new_offset}")
         if new_offset != self._session_track_offset:
             self._session_track_offset = new_offset
             self._set_session_highlight()
@@ -444,7 +425,6 @@ class SessionMode(ModeBase):
         self._show_mode_selector()
         import time
         self._mode_selector_timeout = time.time()
-        self.log(f"Clip launch mode: {self._clip_launch_mode}")
 
     def _show_mode_selector(self):
         """Show mode selector on bottom-left 3 pads."""
@@ -466,24 +446,20 @@ class SessionMode(ModeBase):
         current = song.clip_trigger_quantization
         new_value = max(0, min(13, current - delta))
         song.clip_trigger_quantization = new_value
-        self.log(f"Quantization: {new_value}")
 
     def _adjust_tempo(self, delta):
         """Adjust tempo."""
         song = self.song()
         new_tempo = max(20, min(999, song.tempo + delta))
         song.tempo = new_tempo
-        self.log(f"Tempo: {new_tempo:.1f}")
 
     def _adjust_metronome_volume(self, delta):
         """Toggle metronome on/off (right = on, left = off)."""
         song = self.song()
         if delta > 0:
             song.metronome = True
-            self.log("Metronome: ON")
         elif delta < 0:
             song.metronome = False
-            self.log("Metronome: OFF")
 
     def _adjust_master_volume(self, delta):
         """Adjust master volume."""
@@ -494,7 +470,6 @@ class SessionMode(ModeBase):
         current = mixer.volume.value
         new_value = max(0.0, min(1.0, current + delta * 0.02))
         mixer.volume.value = new_value
-        self.log(f"Master volume: {new_value:.2f}")
 
     def _undo_redo(self, delta):
         """Undo/redo operations."""
@@ -502,11 +477,9 @@ class SessionMode(ModeBase):
         if delta < 0:
             if song.can_undo:
                 song.undo()
-                self.log("Undo")
         else:
             if song.can_redo:
                 song.redo()
-                self.log("Redo")
 
     def _decode_relative_value(self, value):
         """Decode relative CC value to delta."""
@@ -519,7 +492,6 @@ class SessionMode(ModeBase):
             return -1  # Counter-clockwise
         else:
             # Should never happen, log error
-            self.log(f"ERROR: Unexpected relative knob value: {value}")
             return 0
 
     # -------------------------------------------------------------------------
@@ -582,7 +554,6 @@ class SessionMode(ModeBase):
 
     def _on_tracks_changed(self):
         """Called when tracks are added or removed."""
-        self.log("Tracks changed, updating display...")
         # Re-add listeners for new track layout
         self._remove_clip_slot_listeners()
         self._add_clip_slot_listeners()

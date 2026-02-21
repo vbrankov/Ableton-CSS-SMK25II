@@ -71,6 +71,7 @@ class Hardware:
 
     def configure_knob(self, knob_index, channel, cc, speed=0, shifted=False):
         """Fully configure a knob as relative CC."""
+        self._log(f"HW: configure_knob(knob={knob_index}, ch={channel}, cc={cc}, shifted={shifted})")
         self.set_knob_type(knob_index, KNOB_TYPE_RELATIVE, shifted=shifted)
         self.set_knob_speed(knob_index, speed, shifted=shifted)
         self.set_knob_channel(knob_index, channel, shifted=shifted)
@@ -114,7 +115,6 @@ class Hardware:
 
     def configure_pad(self, pad_index, pad_type, channel, note, shifted=False):
         """Fully configure a pad."""
-        self._log(f"HW: configure_pad(pad={pad_index}, type={pad_type}, ch={channel}, note={note}, shifted={shifted})")
         self.set_pad_type(pad_index, pad_type, shifted=shifted)
         self.set_pad_channel(pad_index, channel, shifted=shifted)
         self.set_pad_note(pad_index, note, shifted=shifted)
