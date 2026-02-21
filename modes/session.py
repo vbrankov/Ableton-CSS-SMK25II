@@ -144,7 +144,6 @@ class SessionMode(ModeBase):
     def handle_knob(self, knob_index, value):
         """Handle knob turn in session mode."""
         delta = self._decode_relative_value(value)
-        self.log(f"Knob {knob_index}, value={value}, delta={delta}")
         if delta == 0:
             return
 
@@ -408,7 +407,6 @@ class SessionMode(ModeBase):
 
     def _scroll_view_vertical(self, delta):
         """Scroll session box vertically."""
-        self.log(f"Scroll vertical: delta={delta}")
         song = self.song()
         new_offset = max(0, min(len(song.scenes) - TRACK_CTRL_ROWS,
                                 self._session_scene_offset + delta))

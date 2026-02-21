@@ -165,13 +165,10 @@ class CrossfaderMode(ModeBase):
                     # Cycle through: None → A → B → None
                     if current == CROSSFADER_NONE:
                         mixer.crossfade_assign = CROSSFADER_A
-                        self.log(f"Track {track.name}: assigned to A")
                     elif current == CROSSFADER_A:
                         mixer.crossfade_assign = CROSSFADER_B
-                        self.log(f"Track {track.name}: assigned to B")
                     else:  # CROSSFADER_B
                         mixer.crossfade_assign = CROSSFADER_NONE
-                        self.log(f"Track {track.name}: unassigned")
 
                     self.update()
 
@@ -182,7 +179,6 @@ class CrossfaderMode(ModeBase):
             if hasattr(master_track, 'mixer_device'):
                 crossfader_param = master_track.mixer_device.crossfader
                 crossfader_param.value = crossfader_param.min
-                self.log("Crossfader: A (left)")
 
         elif pad_index == PAD_CROSSFADER_CENTER:
             # Snap crossfader to center
@@ -191,7 +187,6 @@ class CrossfaderMode(ModeBase):
                 crossfader_param = master_track.mixer_device.crossfader
                 center = (crossfader_param.min + crossfader_param.max) / 2.0
                 crossfader_param.value = center
-                self.log("Crossfader: Center")
 
         elif pad_index == PAD_CROSSFADER_RIGHT:
             # Snap crossfader to right (B side)
@@ -199,7 +194,6 @@ class CrossfaderMode(ModeBase):
             if hasattr(master_track, 'mixer_device'):
                 crossfader_param = master_track.mixer_device.crossfader
                 crossfader_param.value = crossfader_param.max
-                self.log("Crossfader: B (right)")
 
         elif pad_index == PAD_TRACK_LEFT:
             self._navigate_tracks(-8)

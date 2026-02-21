@@ -163,10 +163,8 @@ class MixMode(ModeBase):
                 # Toggle mute or solo based on current mode
                 if self._mix_mode == MODE_MUTE:
                     track.mute = not track.mute
-                    self.log(f"Track {track.name}: mute = {track.mute}")
                 else:  # MODE_SOLO
                     track.solo = not track.solo
-                    self.log(f"Track {track.name}: solo = {track.solo}")
 
                 self.update()
 

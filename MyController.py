@@ -126,11 +126,15 @@ class MyController(ControlSurface):
         # Enable bulk mode for faster init
         self._hw.set_bulk_mode(True)
 
+        # Configure all modes once (hardware setup)
+        for mode in self._modes.values():
+            mode.configure()
+
         # Configure shift mode pads
         self._shift_mode.configure()
         self._shift_mode.update()
 
-        # Switch to initial mode
+        # Switch to initial mode (just updates colors)
         self.switch_mode(self._current_mode_number)
 
         # Disable bulk mode
@@ -211,8 +215,6 @@ class MyController(ControlSurface):
         if mode_number == self._current_mode_number and self._current_mode is not None:
             return
 
-        self.log_message(f"Switching mode: {self._current_mode_number} -> {mode_number}")
-
         # Disconnect current mode
         if self._current_mode:
             self._current_mode.disconnect()
@@ -227,9 +229,8 @@ class MyController(ControlSurface):
 
         self._current_mode_number = mode_number
 
-        # Configure and activate new mode
+        # Just update colors - hardware is already configured
         if self._current_mode:
-            self._current_mode.configure()
             self._current_mode.update()
 
         # Update shift page to show current mode
@@ -331,7 +332,6 @@ class MyController(ControlSurface):
 
     def build_midi_map(self, midi_map_handle):
         """Build MIDI map for Live."""
-        self.log_message("SMK25II: build_midi_map called")
 
         # Forward pads (channel 9) - all pads send notes
         # Notes 36-51 for regular mode pads
@@ -373,8 +373,6 @@ class MyController(ControlSurface):
                     channel,
                     cc
                 )
-
-        self.log_message("SMK25II: MIDI map built")
 
     # =========================================================================
     # Shift knob handlers (global navigation)
@@ -435,7 +433,6 @@ class MyController(ControlSurface):
 
         if new_index < len(tracks):
             view.selected_track = tracks[new_index]
-            self.log_message(f"Selected track: {tracks[new_index].name}")
 
     def _shift_scroll_vertical(self, delta):
         """Select scene (shift knob 2)."""
@@ -455,17 +452,16 @@ class MyController(ControlSurface):
 
         if new_index < len(scenes):
             view.selected_scene = scenes[new_index]
-            self.log_message(f"Selected scene: {new_index + 1}")
 
     def _shift_blue_hand(self, delta):
         """Move blue hand (device focus)."""
-        self.log_message(f"Blue hand: {delta}")
         # TODO: Implement blue hand movement
+        pass
 
     def _shift_zoom(self, delta):
         """Zoom in/out."""
-        self.log_message(f"Zoom: {delta}")
         # TODO: Implement zoom
+        pass
 
     def _shift_playhead(self, delta):
         """Rewind/fast forward playhead."""
@@ -476,7 +472,6 @@ class MyController(ControlSurface):
         seconds_per_bar = 60.0 / song.tempo * 4  # Assuming 4/4
         new_pos = max(0, current_pos + delta * seconds_per_bar)
         song.current_song_time = new_pos
-        self.log_message(f"Playhead: {new_pos:.2f}s")
 
     def _shift_loop_start(self, delta):
         """Adjust loop start position."""
@@ -490,7 +485,6 @@ class MyController(ControlSurface):
             # Don't move past loop end
             if new_start < song.loop_start + song.loop_length:
                 song.loop_start = new_start
-                self.log_message(f"Loop start: {new_start:.2f}s")
 
     def _shift_loop_length(self, delta):
         """Adjust loop length."""
@@ -502,7 +496,6 @@ class MyController(ControlSurface):
             seconds_per_bar = 60.0 / song.tempo * 4
             new_length = max(seconds_per_bar, loop_length + delta * seconds_per_bar)
             song.loop_length = new_length
-            self.log_message(f"Loop length: {new_length:.2f}s")
 
     def _shift_undo_redo(self, delta):
         """Undo/redo operations."""
@@ -510,11 +503,9 @@ class MyController(ControlSurface):
         if delta < 0:
             if song.can_undo:
                 song.undo()
-                self.log_message("Undo")
         else:
             if song.can_redo:
                 song.redo()
-                self.log_message("Redo")
 
     # =========================================================================
     # Cleanup

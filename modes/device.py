@@ -143,7 +143,6 @@ class DeviceMode(ModeBase):
                 device = devices[pad_index]
                 song.view.select_device(device)
                 song.appointed_device = device  # Show blue hand
-                self.log(f"Selected device {pad_index}: {device.name}")
                 self.update()
 
         # Bottom row: functions (8-15)
@@ -193,12 +192,10 @@ class DeviceMode(ModeBase):
         elif pad_index == PAD_UNDO:
             if song.can_undo:
                 song.undo()
-                self.log("Undo")
 
         elif pad_index == PAD_REDO:
             if song.can_redo:
                 song.redo()
-                self.log("Redo")
 
     def handle_knob(self, knob_index, value):
         """Handle knob turn in device mode."""
@@ -210,7 +207,6 @@ class DeviceMode(ModeBase):
         device = song.appointed_device
 
         if not device:
-            self.log("No device selected")
             return
 
         # Get device parameters
@@ -241,9 +237,7 @@ class DeviceMode(ModeBase):
             new_value = max(param.min, min(param.max, new_value))
             param.value = new_value
 
-            self.log(f"Knob {knob_index}: {param.name} = {new_value:.2f}")
         else:
-            self.log(f"No parameter at bank {self._bank_offset} + knob {knob_index}")
 
     def _navigate_tracks(self, delta):
         """Navigate tracks by delta amount."""
@@ -264,7 +258,6 @@ class DeviceMode(ModeBase):
             self._device_index = 0  # Reset to first device on new track
             self._bank_offset = 0  # Reset bank offset
             self.update()
-            self.log(f"Selected track: {tracks[new_index].name}")
 
     def _decode_relative_value(self, value):
         """Decode relative CC value to delta."""

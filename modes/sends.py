@@ -188,7 +188,6 @@ class SendsMode(ModeBase):
                     new_value = max(send_param.min, min(send_param.max, current + delta * step_size))
                     send_param.value = new_value
 
-                    self.log(f"Track {track.name}: send {self._send_index} = {new_value:.2f}")
 
     def _navigate_sends(self, delta):
         """Navigate sends by delta amount."""

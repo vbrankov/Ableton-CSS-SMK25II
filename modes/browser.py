@@ -262,7 +262,6 @@ class BrowserMode(ModeBase):
                     category_item = getattr(browser, attr_name)
                     if category_item:
                         self._browser_items.append(category_item)
-                        self.log(f"Found category: {display_name}")
 
             self._browser_index = 0
             self._browser_stack = []
@@ -305,12 +304,10 @@ class BrowserMode(ModeBase):
                     # Enter folder/category
                     self._browser_items = children
                     self._browser_index = 0
-                    self.log(f"Entered: {current_item.name if hasattr(current_item, 'name') else 'Unknown'} ({len(self._browser_items)} items)")
 
                     # Send updated browser levels
                     self._send_browser_levels()
                 else:
-                    self.log("Item has no children")
             except Exception as e:
                 self.log(f"Cannot enter item: {e}")
         else:
@@ -373,7 +370,6 @@ class BrowserMode(ModeBase):
             # If we found a selected item in Ableton, use it
             if selected_item:
                 if hasattr(selected_item, 'uri'):
-                    self.log(f"Using Ableton selection: {selected_item.name if hasattr(selected_item, 'name') else 'Unknown'}")
                     return selected_item.uri
                 elif hasattr(selected_item, 'name'):
                     return selected_item.name
