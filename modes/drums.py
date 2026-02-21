@@ -7,7 +7,7 @@ from .base import ModeBase
 from ..Hardware import PAD_TYPE_NOTE
 
 # Drum mode settings
-DRUM_CHANNEL = 0  # Channel 1
+DRUM_CHANNEL = 9  # Channel 1
 DRUM_BASE_NOTE = 36  # C1
 COLOR_DRUM = 0x00A0FF  # Orange
 

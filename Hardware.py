@@ -114,6 +114,7 @@ class Hardware:
 
     def configure_pad(self, pad_index, pad_type, channel, note, shifted=False):
         """Fully configure a pad."""
+        self._log(f"HW: configure_pad(pad={pad_index}, type={pad_type}, ch={channel}, note={note}, shifted={shifted})")
         self.set_pad_type(pad_index, pad_type, shifted=shifted)
         self.set_pad_channel(pad_index, channel, shifted=shifted)
         self.set_pad_note(pad_index, note, shifted=shifted)

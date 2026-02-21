@@ -3,7 +3,8 @@
 import Live
 from _Framework.ControlSurface import ControlSurface
 from .Hardware import Hardware
-from .modes import SessionMode, DrumsMode, DrumColorMode, ShiftMode, DeviceMode, MixMode, SendsMode, CrossfaderMode
+from .WebServer import WebServer
+from .modes import SessionMode, DrumsMode, DrumColorMode, ShiftMode, DeviceMode, MixMode, SendsMode, CrossfaderMode, BrowserMode
 
 # Mode definitions (0-15)
 MODE_SESSION = 0
@@ -22,6 +23,29 @@ MODE_12 = 12
 MODE_13 = 13
 MODE_14 = 14
 MODE_15 = 15
+
+# Mode names for web display
+MODE_NAMES = {
+    MODE_SESSION: "Session",
+    MODE_DEVICE: "Device",
+    MODE_MIX: "Mix",
+    MODE_SENDS: "Sends",
+    MODE_EDIT_CLIP: "Edit Clip",
+    MODE_INSTRUMENTS: "Browser",
+    MODE_6: "Crossfader",
+    MODE_7: "Mode 7",
+    MODE_DRUMS: "Drums",
+    MODE_DRUM_COLOR: "Drum Color",
+    MODE_10: "Mode 10",
+    MODE_11: "Mode 11",
+    MODE_12: "Mode 12",
+    MODE_13: "Mode 13",
+    MODE_14: "Mode 14",
+    MODE_15: "Mode 15",
+}
+
+# Web server settings (User-configurable)
+WEB_SERVER_PORT = 8765  # Change this if port is already in use
 
 # Shift knob settings
 SHIFT_KNOB_CHANNEL = 14  # Channel 15
@@ -43,11 +67,18 @@ class MyController(ControlSurface):
 
     def __init__(self, c_instance):
         super(MyController, self).__init__(c_instance)
+        self.log_message("=" * 80)
+        self.log_message("SMK25II: NEW SESSION STARTING")
+        self.log_message("=" * 80)
         self.log_message("SMK25II: Initializing...")
 
         # Hardware abstraction
         self._hw = Hardware(c_instance.send_midi, self.log_message)
         self._hardware_initialized = False
+
+        # Web server for browser-based status display
+        self._web_server = WebServer(WEB_SERVER_PORT, self, self.log_message)
+        self._web_server.start()
 
         # Mode management
         self._current_mode_number = MODE_SESSION
@@ -69,6 +100,7 @@ class MyController(ControlSurface):
         self._modes[MODE_DEVICE] = DeviceMode(self, self._hw, MODE_DEVICE)
         self._modes[MODE_MIX] = MixMode(self, self._hw, MODE_MIX)
         self._modes[MODE_SENDS] = SendsMode(self, self._hw, MODE_SENDS)
+        self._modes[MODE_INSTRUMENTS] = BrowserMode(self, self._hw, MODE_INSTRUMENTS)
         self._modes[MODE_6] = CrossfaderMode(self, self._hw, MODE_6)
         self._modes[MODE_DRUMS] = DrumsMode(self, self._hw, MODE_DRUMS)
         self._modes[MODE_DRUM_COLOR] = DrumColorMode(self, self._hw, MODE_DRUM_COLOR)
@@ -116,6 +148,56 @@ class MyController(ControlSurface):
     def get_current_mode(self):
         """Get current mode number."""
         return self._current_mode_number
+
+    def get_status(self):
+        """Get current controller status for web display."""
+        status = {
+            'mode': {
+                'number': self._current_mode_number,
+                'name': MODE_NAMES.get(self._current_mode_number, f"Mode {self._current_mode_number}")
+            },
+            'browser': {
+                'level1': '',
+                'level2': '',
+                'level3': '',
+                'level4': '',
+                'active_level': 0
+            },
+            'pad_colors': [],
+            'pad_labels': []
+        }
+
+        # Get browser-specific status if in browser mode
+        if self._current_mode_number == MODE_INSTRUMENTS and self._current_mode:
+            if hasattr(self._current_mode, 'get_status'):
+                browser_status = self._current_mode.get_status()
+                status['browser'] = browser_status
+
+        # Get pad colors from current mode
+        if self._current_mode and hasattr(self._current_mode, 'get_pad_colors'):
+            pad_colors = self._current_mode.get_pad_colors()
+            # Convert to CSS hex format
+            status['pad_colors'] = [self._rgb_to_hex(c) for c in pad_colors]
+
+        # Get pad labels from current mode (dynamic names like track/scene names)
+        if self._current_mode and hasattr(self._current_mode, 'get_pad_labels'):
+            status['pad_labels'] = self._current_mode.get_pad_labels()
+
+        # Get knob labels from current mode (dynamic parameter names)
+        status['knob_labels'] = []
+        if self._current_mode and hasattr(self._current_mode, 'get_knob_labels'):
+            status['knob_labels'] = self._current_mode.get_knob_labels()
+
+        return status
+
+    def _rgb_to_hex(self, rgb):
+        """Convert hardware RGB format to CSS hex string."""
+        if rgb is None or rgb == 0:
+            return '#1a1a1a'  # Default dark gray
+        r = (rgb >> 0) & 0xFF
+        g = (rgb >> 8) & 0xFF
+        b = (rgb >> 16) & 0xFF
+        return f"#{r:02x}{g:02x}{b:02x}"
 
     def set_session_highlight(self, track_offset, scene_offset, width, height, include_return_tracks):
         """Set the session highlight (red box) in Ableton."""
@@ -177,52 +259,32 @@ class MyController(ControlSurface):
             velocity = data2 if msg_type == 0x90 else 0
             note = data1
 
-            # Shift page pads (mode selection)
-            if channel == 15:  # SHIFT_PAD_CHANNEL
-                pad_index = note - 36  # SHIFT_PAD_BASE_NOTE
-                if 0 <= pad_index < 16:
+            # All pads on channel 9 (standard MIDI drum channel)
+            if channel == 9:
+                # Check if this is a shift pad (notes 52-67)
+                if 52 <= note <= 67:
+                    # Shift mode pads
+                    pad_index = note - 52
                     self._shift_mode.handle_pad(pad_index, velocity)
-            # Device mode pads (channel 2)
-            elif channel == 2 and self._current_mode_number == MODE_DEVICE:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Session mode pads (channel 13)
-            elif channel == 13 and self._current_mode_number == MODE_SESSION:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Mix mode pads (channel 3)
-            elif channel == 3 and self._current_mode_number == MODE_MIX:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Sends mode pads (channel 4)
-            elif channel == 4 and self._current_mode_number == MODE_SENDS:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Crossfader mode pads (channel 5)
-            elif channel == 5 and self._current_mode_number == MODE_6:
-                pad_index = note - 36
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Drum Color mode pads (channel 9) - when in MODE_DRUM_COLOR
-            # Receive ch9 for color editing tracking (ch0 from sysex passes through for playback)
-            elif channel == 9 and self._current_mode_number == MODE_DRUM_COLOR:
-                # Map notes to pad indices (rows are swapped in drum modes)
-                # Notes 36-43 (lower notes) → pad indices 8-15 (bottom row)
-                # Notes 44-51 (higher notes) → pad indices 0-7 (top row)
-                if 36 <= note <= 43:
-                    pad_index = note - 36 + 8  # Bottom row
-                elif 44 <= note <= 51:
-                    pad_index = note - 44  # Top row
-                else:
-                    pad_index = -1
+                elif self._current_mode_number in [MODE_DRUMS, MODE_DRUM_COLOR]:
+                    # Drum modes: Map notes to pad indices (rows are swapped)
+                    # Notes 36-43 (lower notes) → pad indices 8-15 (bottom row)
+                    # Notes 44-51 (higher notes) → pad indices 0-7 (top row)
+                    if 36 <= note <= 43:
+                        pad_index = note - 36 + 8  # Bottom row
+                    elif 44 <= note <= 51:
+                        pad_index = note - 44  # Top row
+                    else:
+                        pad_index = -1
 
-                if 0 <= pad_index < 16:
-                    self._current_mode.handle_pad(pad_index, velocity)
-            # Drums mode pads (channel 0) - pass through to Ableton when in MODE_DRUMS
+                    if 0 <= pad_index < 16 and self._current_mode:
+                        self._current_mode.handle_pad(pad_index, velocity)
+                else:
+                    # Regular modes: Simple pad index mapping (notes 36-51)
+                    if 36 <= note <= 51:
+                        pad_index = note - 36
+                        if self._current_mode:
+                            self._current_mode.handle_pad(pad_index, velocity)
 
         # CC (knobs)
         elif msg_type == 0xB0:
@@ -254,8 +316,12 @@ class MyController(ControlSurface):
             elif channel == 4 and 20 <= cc <= 27 and self._current_mode_number == MODE_SENDS:
                 knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
-            # Crossfader mode knobs (channel 5, CC 20-27)
-            elif channel == 5 and 20 <= cc <= 27 and self._current_mode_number == MODE_6:
+            # Browser/Instruments mode knobs (channel 5, CC 20-27)
+            elif channel == 5 and 20 <= cc <= 27 and self._current_mode_number == MODE_INSTRUMENTS:
+                knob_index = cc - 20
+                self._current_mode.handle_knob(knob_index, value)
+            # Crossfader mode knobs (channel 6, CC 20-27)
+            elif channel == 6 and 20 <= cc <= 27 and self._current_mode_number == MODE_6:
                 knob_index = cc - 20
                 self._current_mode.handle_knob(knob_index, value)
             # Drum Color mode knobs (channel 10, CC 20-27)
@@ -265,148 +331,50 @@ class MyController(ControlSurface):
 
     def build_midi_map(self, midi_map_handle):
         """Build MIDI map for Live."""
-        # Import Live MIDI map functions
-        script_handle = self._c_instance.handle()
+        self.log_message("SMK25II: build_midi_map called")
 
-        # Forward shift pad notes for mode selection
-        for i in range(16):
+        # Forward pads (channel 9) - all pads send notes
+        # Notes 36-51 for regular mode pads
+        for note in range(36, 52):
             Live.MidiMap.forward_midi_note(
-                script_handle,
+                self._c_instance.handle(),
                 midi_map_handle,
-                15,  # SHIFT_PAD_CHANNEL
-                36 + i  # SHIFT_PAD_BASE_NOTE + i
+                9,  # Channel 9 (standard MIDI drums)
+                note
             )
 
-        # Forward shift knob CCs
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                SHIFT_KNOB_CHANNEL,
-                SHIFT_KNOB_BASE_CC + i
-            )
-
-        # Forward session mode pads and knobs
-        # Session pads (channel 13, notes 36-51)
-        for i in range(16):
+        # Notes 52-67 for shift pads (on shifted hardware page)
+        for note in range(52, 68):
             Live.MidiMap.forward_midi_note(
-                script_handle,
+                self._c_instance.handle(),
                 midi_map_handle,
-                13,  # TRACK_CTRL_CHANNEL
-                36 + i
+                9,  # Channel 9
+                note
             )
 
-        # Session knobs (channel 0, CC 21-28)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                0,  # SESSION_KNOB_CHANNEL
-                21 + i  # SESSION_KNOB_BASE_CC + i
-            )
+        # Forward knobs for each mode
+        knob_channels = [
+            (0, 21, 29),   # Session mode (CCs 21-28)
+            (1, 20, 28),   # Drums mode
+            (2, 20, 28),   # Device mode
+            (3, 20, 28),   # Mix mode
+            (4, 20, 28),   # Sends mode
+            (5, 20, 28),   # Browser mode
+            (6, 20, 28),   # Crossfader mode
+            (10, 20, 28),  # Drum Color mode
+            (14, 20, 28),  # Shift knobs
+        ]
 
-        # Drums pads (channel 0, notes 36-51) - NOT forwarded, pass through to Ableton
-        # These notes go directly to Ableton for drum triggering
+        for channel, cc_start, cc_end in knob_channels:
+            for cc in range(cc_start, cc_end):
+                Live.MidiMap.forward_midi_cc(
+                    self._c_instance.handle(),
+                    midi_map_handle,
+                    channel,
+                    cc
+                )
 
-        # Device mode pads (channel 2, notes 36-51)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                2,  # DEVICE_PAD_CHANNEL
-                36 + i
-            )
-
-        # Device mode knobs (channel 2, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                2,  # DEVICE_KNOB_CHANNEL
-                20 + i
-            )
-
-        # Drum mode knobs (channel 1, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                1,  # DRUM_KNOB_CHANNEL
-                20 + i
-            )
-
-        # Mix mode pads (channel 3, notes 36-51)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                3,  # MIX_PAD_CHANNEL
-                36 + i
-            )
-
-        # Mix mode knobs (channel 3, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                3,  # MIX_KNOB_CHANNEL
-                20 + i
-            )
-
-        # Sends mode pads (channel 4, notes 36-51)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                4,  # SENDS_PAD_CHANNEL
-                36 + i
-            )
-
-        # Sends mode knobs (channel 4, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                4,  # SENDS_KNOB_CHANNEL
-                20 + i
-            )
-
-        # Crossfader mode pads (channel 5, notes 36-51)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                5,  # CROSSFADER_PAD_CHANNEL
-                36 + i
-            )
-
-        # Crossfader mode knobs (channel 5, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                5,  # CROSSFADER_KNOB_CHANNEL
-                20 + i
-            )
-
-        # Drum Color mode pads (channel 9, notes 36-51)
-        # Forward ch9 for tracking (ch0 from sysex passes through for playback)
-        for i in range(16):
-            Live.MidiMap.forward_midi_note(
-                script_handle,
-                midi_map_handle,
-                9,  # Channel 9 for tracking
-                36 + i
-            )
-
-        # Drum Color mode knobs (channel 10, CC 20-27)
-        for i in range(8):
-            Live.MidiMap.forward_midi_cc(
-                script_handle,
-                midi_map_handle,
-                10,  # DRUM_COLOR_KNOB_CHANNEL
-                20 + i
-            )
+        self.log_message("SMK25II: MIDI map built")
 
     # =========================================================================
     # Shift knob handlers (global navigation)
@@ -559,6 +527,10 @@ class MyController(ControlSurface):
         # Disconnect current mode
         if self._current_mode:
             self._current_mode.disconnect()
+
+        # Stop web server
+        if self._web_server:
+            self._web_server.stop()
 
         super(MyController, self).disconnect()
         self.log_message("SMK25II: Disconnected.")

@@ -9,11 +9,11 @@ from ..Hardware import (
 )
 
 # Pad configuration
-CROSSFADER_PAD_CHANNEL = 5  # Channel 6 (0-indexed)
+CROSSFADER_PAD_CHANNEL = 9  # Channel 7 (0-indexed)
 CROSSFADER_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
-CROSSFADER_KNOB_CHANNEL = 5  # Channel 6
+CROSSFADER_KNOB_CHANNEL = 6  # Channel 7
 CROSSFADER_KNOB_BASE_CC = 20  # CC 20-27
 
 # Pad indices

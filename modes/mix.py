@@ -9,7 +9,7 @@ from ..Hardware import (
 )
 
 # Pad configuration
-MIX_PAD_CHANNEL = 3  # Channel 4 (0-indexed)
+MIX_PAD_CHANNEL = 9  # Channel 4 (0-indexed)
 MIX_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration

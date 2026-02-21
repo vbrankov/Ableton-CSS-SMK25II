@@ -4,8 +4,8 @@ from .base import ModeBase
 from ..Hardware import PAD_TYPE_NOTE, COLOR_WHITE, COLOR_OFF
 
 # Shift page settings
-SHIFT_PAD_CHANNEL = 15  # Channel 16
-SHIFT_PAD_BASE_NOTE = 36
+SHIFT_PAD_CHANNEL = 9  # Channel 10
+SHIFT_PAD_BASE_NOTE = 52  # Notes 52-67 (regular pads use 36-51)
 
 
 class ShiftMode(ModeBase):
@@ -17,9 +17,7 @@ class ShiftMode(ModeBase):
 
     def configure(self):
         """Configure shift page pads."""
-        self.log("Configuring shift page pads...")
-
-        # Configure all 16 pads for mode selection
+        # Configure shift pads as MCP type
         for i in range(16):
             self._hw.configure_pad(
                 pad_index=i,
@@ -28,13 +26,8 @@ class ShiftMode(ModeBase):
                 note=SHIFT_PAD_BASE_NOTE + i,
                 shifted=True
             )
-
-        # Set all shift page LEDs to ON (255)
-        self.log("Setting shift page LEDs to 255...")
-        for i in range(16):
+            # Set LED state to ON
             self._hw.set_pad_led_state(i, 255, shifted=True)
-
-        self.log("Shift page pads configured.")
 
     def update(self):
         """Update shift page colors to show selected mode."""
@@ -57,6 +50,18 @@ class ShiftMode(ModeBase):
         """Handle knob in shift mode (shift knobs)."""
         # Delegate to controller's shift knob handler
         self._controller.handle_shift_knob(knob_index, value)
+
+    def get_pad_labels(self):
+        """Get mode names for each pad (modes 0-15)."""
+        # Import here to avoid circular dependency
+        from ..MyController import MODE_NAMES
+        return [MODE_NAMES.get(i, f"Mode {i}") for i in range(16)]
+
+    def get_pad_colors(self):
+        """Get pad colors (white for current mode, off for others)."""
+        from ..Hardware import COLOR_WHITE, COLOR_OFF
+        current_mode = self._controller.get_current_mode()
+        return [COLOR_WHITE if i == current_mode else COLOR_OFF for i in range(16)]
 
     def disconnect(self):
         """Cleanup when leaving shift mode."""

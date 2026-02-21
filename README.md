@@ -6,8 +6,13 @@ A custom MIDI Remote Script for the SMK25II MIDI controller, designed for Ableto
 
 **Implemented Modes:**
 - **Mode 0 - Session**: 7×2 clip launcher with scene launch, red box navigation, tempo/volume controls
-- **Mode 2 - Device**: 8-device selection, parameter control with banking, device/track navigation
-- **Mode 8 - Drums**: 16-pad drum grid (C1-D#2)
+- **Mode 1 - Device**: 8-device selection, parameter control with banking, device/track navigation
+- **Mode 2 - Mix**: Track volume control, mute/solo toggle, track navigation
+- **Mode 3 - Sends**: Send control for 8 tracks, send selection, track navigation
+- **Mode 5 - Browser/Instruments**: Device browser navigation with pad combination memorization
+- **Mode 6 - Crossfader**: DJ-style crossfader control with A/B assignment
+- **Mode 8 - Drums**: 16-pad drum grid (C1-D#2) with blue hand parameter control
+- **Mode 9 - Drum Color**: Per-pad HSV color editing for drum pads
 
 **Global Features:**
 - Mode selection via MCP/Shift button
@@ -29,6 +34,31 @@ A custom MIDI Remote Script for the SMK25II MIDI controller, designed for Ableto
    - **Set Control Surface to "SMK25II" ONLY on the first SMK25II port**
    - Leave Control Surface blank for the other two ports
    - This configuration is required for all modes to work correctly (especially Drum Color mode)
+
+## Web-Based Reference Page
+
+The script includes a built-in web server that provides a visual reference for all controller modes.
+
+**Setup on iPhone/iPad (Full-Screen Mode):**
+1. Find your PC's IP address (e.g., 192.168.1.X)
+2. Open Safari on your device and go to `http://YOUR_PC_IP:8765`
+3. Tap the **Share** button (square with arrow pointing up)
+4. Scroll down and tap **"Add to Home Screen"**
+5. Tap **"Add"**
+6. Launch the app from your home screen - it will run full-screen without Safari UI!
+
+**Desktop Browser:**
+Simply navigate to `http://localhost:8765` or `http://YOUR_PC_IP:8765`
+
+**Features:**
+- Automatically displays reference for the current active mode
+- Shows all 8 knob functions and 16 pad functions
+- Updates in real-time when you switch modes
+- Optimized for landscape orientation on mobile devices
+- No app installation required - pure web-based
+
+**Configuration:**
+The web server port can be changed by editing `WEB_SERVER_PORT` in `MyController.py` (default: 8765)
 
 ## Usage
 
@@ -92,10 +122,17 @@ See existing modes for examples.
 - LED state: 0-127=off, 128-255=on
 
 **Channels:**
-- Session: Pads=13, Knobs=0
-- Device: Pads=2, Knobs=2
-- Drums: Pads=0
-- Shift: Pads=15, Knobs=14
+- All mode pads: Channel 10 (Notes 36-51, CCs 36-51)
+- Shift pads: Channel 10 (CCs 52-67)
+- Session knobs: Channel 1 (CCs 21-28)
+- Device knobs: Channel 3 (CCs 20-27)
+- Mix knobs: Channel 4 (CCs 20-27)
+- Sends knobs: Channel 5 (CCs 20-27)
+- Browser knobs: Channel 6 (CCs 20-27)
+- Crossfader knobs: Channel 7 (CCs 20-27)
+- Drums knobs: Channel 2 (CCs 20-27)
+- Drum Color knobs: Channel 11 (CCs 20-27)
+- Shift knobs: Channel 15 (CCs 20-27)
 
 ## Requirements
 
@@ -108,16 +145,18 @@ See existing modes for examples.
 **Implemented:**
 - ✅ Session mode (clip launching, scene launch, transport controls)
 - ✅ Device mode (parameter control, device/track navigation)
-- ✅ Drums mode (basic 16-pad grid)
-- ✅ Mode selection and switching
-- ✅ Global shift knobs
+- ✅ Mix mode (volume, mute/solo, track navigation)
+- ✅ Sends mode (send control, send selection, track navigation)
+- ✅ Browser/Instruments mode (device browser navigation, pad memorization)
+- ✅ Crossfader mode (DJ-style crossfader control)
+- ✅ Drums mode (16-pad drum grid with parameter control)
+- ✅ Drum Color mode (per-pad HSV color editing)
+- ✅ Mode selection and switching (via MCP/Shift button)
+- ✅ Global shift knobs (track/scene navigation, undo/redo, etc.)
+- ✅ Web-based reference page (runs on port 8765)
 
 **Planned:**
-- Mode 3 - Sends
-- Mode 4 - Mix
-- Mode 5 - Edit Clip
-- Mode 6 - Instruments
-- Mode 9 - Drum Color
+- Mode 4 - Edit Clip (clip editing and manipulation)
 
 ## License
 

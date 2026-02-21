@@ -66,3 +66,7 @@ class ModeBase:
     def song(self):
         """Get the Live song instance."""
         return self._controller.song()
+
+    def application(self):
+        """Get the Live application instance."""
+        return self._controller.application()

@@ -100,7 +100,6 @@ class DrumColorMode(ModeBase):
 
     def handle_pad(self, pad_index, velocity):
         """Handle pad press/release - track press/release times for color editing."""
-        self.log(f"DEBUG: handle_pad({pad_index}, {velocity})")
         if velocity == 0:
             # Pad released - record the release time
             self._pad_release_times[pad_index] = time.time()
@@ -155,7 +154,6 @@ class DrumColorMode(ModeBase):
         3. Include all pads that were pressed OR released during this window
         """
         if not self._pad_release_times:
-            self.log("DEBUG: No release times recorded")
             return []
 
         # Find the most recently released pad
@@ -165,9 +163,6 @@ class DrumColorMode(ModeBase):
         # Get the time window for this pad
         press_time = self._pad_press_times.get(most_recent_pad, 0)
         release_time = self._pad_release_times[most_recent_pad]
-
-        self.log(f"DEBUG: Most recent pad: {most_recent_pad}")
-        self.log(f"DEBUG: Window: press={press_time:.3f}, release={release_time:.3f}, duration={release_time-press_time:.3f}s")
 
         # Include all pads that were pressed or released during this window
         recent_pads = []
@@ -181,11 +176,7 @@ class DrumColorMode(ModeBase):
 
             if pressed_during or released_during:
                 recent_pads.append(pad_idx)
-                self.log(f"DEBUG: Pad {pad_idx} IN group: press={pad_press:.3f}, release={pad_release:.3f}, pressed_during={pressed_during}, released_during={released_during}")
-            else:
-                self.log(f"DEBUG: Pad {pad_idx} NOT in group: press={pad_press:.3f}, release={pad_release:.3f}")
 
-        self.log(f"DEBUG: Final group: {recent_pads}")
         return recent_pads
 
     def _adjust_hue(self, delta):

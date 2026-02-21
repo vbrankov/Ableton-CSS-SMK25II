@@ -9,5 +9,6 @@ from .device import DeviceMode
 from .mix import MixMode
 from .sends import SendsMode
 from .crossfader import CrossfaderMode
+from .browser import BrowserMode
 
-__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'DrumColorMode', 'ShiftMode', 'DeviceMode', 'MixMode', 'SendsMode', 'CrossfaderMode']
+__all__ = ['ModeBase', 'SessionMode', 'DrumsMode', 'DrumColorMode', 'ShiftMode', 'DeviceMode', 'MixMode', 'SendsMode', 'CrossfaderMode', 'BrowserMode']

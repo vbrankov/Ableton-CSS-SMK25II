@@ -5,7 +5,7 @@ from .base import ModeBase
 from ..Hardware import PAD_TYPE_NOTE, COLOR_OFF
 
 # Track control mode settings
-TRACK_CTRL_CHANNEL = 13  # Channel 14 (0-indexed)
+TRACK_CTRL_CHANNEL = 9  # Channel 14 (0-indexed)
 TRACK_CTRL_BASE_NOTE = 36
 TRACK_CTRL_COLS = 7  # 7 columns for clips
 TRACK_CTRL_ROWS = 2  # 2 rows
@@ -57,7 +57,7 @@ class SessionMode(ModeBase):
         # Clear hardware cache
         self._hw.clear_cache()
 
-        # Configure pads as notes
+        # Configure pads as MCP type
         for i in range(16):
             self._hw.configure_pad(
                 pad_index=i,
@@ -66,10 +66,7 @@ class SessionMode(ModeBase):
                 note=TRACK_CTRL_BASE_NOTE + i,
                 shifted=False
             )
-
-        # Set all LEDs to ON (255)
-        self.log("Setting all pad LEDs to 255...")
-        for i in range(16):
+            # Set LED state to ON
             self._hw.set_pad_led_state(i, 255, shifted=False)
 
         # Configure knobs
@@ -167,6 +164,71 @@ class SessionMode(ModeBase):
             self._adjust_master_volume(delta)
         elif knob_index == SESSION_KNOB_UNDO:
             self._undo_redo(delta)
+
+    def get_pad_colors(self):
+        """Get current pad colors for web display."""
+        colors = []
+        song = self.song()
+        tracks = song.visible_tracks
+
+        for row in range(TRACK_CTRL_ROWS):
+            scene_idx = self._session_scene_offset + row
+
+            for col in range(TRACK_CTRL_COLS):
+                track_idx = self._session_track_offset + col
+                pad_idx = col + (row * 8)
+
+                if track_idx < len(tracks) and scene_idx < len(song.scenes):
+                    track = tracks[track_idx]
+                    clip_slot = track.clip_slots[scene_idx]
+                    color = self._get_session_pad_color(clip_slot, track, self._flash_state)
+                else:
+                    color = COLOR_OFF
+
+                colors.append(color)
+
+            # Scene pad (column 7) - use master track color
+            if scene_idx < len(song.scenes):
+                master_color = self._get_track_color_rgb(song.master_track)
+                colors.append(master_color)
+            else:
+                colors.append(COLOR_OFF)
+
+        return colors
+
+    def get_pad_labels(self):
+        """Get current pad labels (track names for clips, scene number+name for scenes)."""
+        labels = []
+        song = self.song()
+        tracks = song.visible_tracks
+
+        for row in range(TRACK_CTRL_ROWS):
+            scene_idx = self._session_scene_offset + row
+
+            for col in range(TRACK_CTRL_COLS):
+                track_idx = self._session_track_offset + col
+
+                # Clip pads: just track name (replace dash with space)
+                if track_idx < len(tracks):
+                    track = tracks[track_idx]
+                    track_name = track.name.replace('-', ' ')
+                    labels.append(track_name)
+                else:
+                    labels.append('')
+
+            # Scene pad (column 7): scene number + name
+            if scene_idx < len(song.scenes):
+                scene = song.scenes[scene_idx]
+                scene_num = scene_idx + 1
+                scene_name = scene.name if hasattr(scene, 'name') and scene.name else ''
+                if scene_name:
+                    labels.append(f"{scene_num} {scene_name}")
+                else:
+                    labels.append(f"{scene_num}")
+            else:
+                labels.append('')
+
+        return labels
 
     def disconnect(self):
         """Cleanup when leaving session mode."""

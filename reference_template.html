@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>SMK25II Reference</title>
+
+    <!-- iOS Web App -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SMK25II">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            -webkit-overflow-scrolling: touch;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 15px;
+            padding-left: max(15px, env(safe-area-inset-left));
+            padding-right: max(15px, env(safe-area-inset-right));
+            padding-top: max(15px, env(safe-area-inset-top));
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+            gap: 10px;
+        }
+        .header {
+            text-align: center;
+            padding: 2px 4px;
+            position: relative;
+            flex: 0 0 auto;
+        }
+        .header h1 {
+            font-size: 18px;
+            color: #ff5555;
+            margin: 0;
+        }
+        .fullscreen-btn {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            cursor: pointer;
+            display: none;
+        }
+        .fullscreen-btn.show {
+            display: block;
+        }
+        .shift-pads-section {
+            flex: 0 0 auto;
+        }
+        .shift-pads-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 4px;
+            height: 60px;
+        }
+        .shift-pad {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 4px 2px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            color: #888;
+            line-height: 1.1;
+        }
+        .shift-pad.active {
+            color: #fff;
+            border-color: #00ff88;
+        }
+        .knobs-section {
+            flex: 0 0 auto;
+        }
+        .section-label {
+            text-align: center;
+            font-size: 7px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .knobs-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+        }
+        .knob {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 50px;
+        }
+        .knob-name {
+            font-size: 14px;
+            color: #00ff88;
+            line-height: 1.1;
+        }
+        .pads-section {
+            flex: 0 0 auto;
+        }
+        .pads-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 6px;
+            height: 110px;
+        }
+        .pad {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 6px 3px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .pad-name {
+            font-size: 14px;
+            color: #00ff88;
+            line-height: 1.1;
+        }
+
+        /* Responsive font sizes for larger screens (tablets) */
+        @media (min-width: 1000px) {
+            .header h1 {
+                font-size: 36px;
+            }
+            .fullscreen-btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+            .section-label {
+                font-size: 12px;
+            }
+            .shift-pads-grid {
+                height: 100px;
+            }
+            .shift-pad {
+                font-size: 15px;
+            }
+            .knob-name {
+                font-size: 21px;
+            }
+            .pads-grid {
+                height: 180px;
+            }
+            .pad-name {
+                font-size: 21px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="mode-title">Loading...</h1>
+            <button class="fullscreen-btn" id="fullscreen-btn">Fullscreen</button>
+        </div>
+        <div class="shift-pads-section">
+            <div class="section-label">modes</div>
+            <div class="shift-pads-grid" id="shift-pads-grid"></div>
+        </div>
+        <div class="knobs-section">
+            <div class="section-label">knobs</div>
+            <div class="knobs-grid" id="knobs-grid"></div>
+        </div>
+        <div class="pads-section">
+            <div class="section-label">pads</div>
+            <div class="pads-grid" id="pads-grid"></div>
+        </div>
+    </div>
+    <script>
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
+        // Fullscreen button logic (for Android Chrome shortcuts)
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                            window.navigator.standalone ||
+                            document.referrer.includes('android-app://');
+
+        // Show fullscreen button only if NOT in standalone mode
+        if (!isStandalone) {
+            fullscreenBtn.classList.add('show');
+        }
+
+        // Handle fullscreen button click
+        fullscreenBtn.addEventListener('click', () => {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            }
+        });
+
+        // Update button text when fullscreen state changes
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenBtn.textContent = 'Exit Fullscreen';
+            } else {
+                fullscreenBtn.textContent = 'Fullscreen';
+            }
+        });
+
+        let modesData = {};
+        let currentMode = null;
+
+        // Mode names for shift pads
+        const MODE_NAMES = {
+            0: 'Session', 1: 'Device', 2: 'Mix', 3: 'Sends',
+            4: 'Edit Clip', 5: 'Browser', 6: 'Crossfader', 7: 'Mode 7',
+            8: 'Drums', 9: 'Drum Color', 10: 'Mode 10', 11: 'Mode 11',
+            12: 'Mode 12', 13: 'Mode 13', 14: 'Mode 14', 15: 'Mode 15'
+        };
+
+        // Fetch modes data once
+        fetch('/modes')
+            .then(r => r.json())
+            .then(data => {
+                modesData = data;
+                renderShiftPads();
+            });
+
+        // Connect to Server-Sent Events for real-time updates
+        const eventSource = new EventSource('/events');
+
+        eventSource.onmessage = function(event) {
+            const status = JSON.parse(event.data);
+            const modeNum = status.mode.number;
+
+            // Re-render if mode changed
+            if (modeNum !== currentMode) {
+                currentMode = modeNum;
+                renderMode(modeNum, status.pad_labels || []);
+                updateShiftPads(modeNum);
+            }
+
+            // Update pad colors and labels
+            updatePadColors(status.pad_colors || []);
+            updatePadLabels(status.pad_labels || []);
+            updateKnobLabels(status.knob_labels || []);
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('SSE connection error:', error);
+            // Will automatically reconnect
+        };
+
+        function renderMode(modeNum, padLabels = []) {
+            const mode = modesData[modeNum];
+            if (!mode) {
+                document.getElementById('mode-title').textContent = modeNum + '. (Not Documented)';
+                document.getElementById('knobs-grid').innerHTML = '';
+                document.getElementById('pads-grid').innerHTML = '';
+                return;
+            }
+
+            // Update title
+            document.getElementById('mode-title').textContent = modeNum + '. ' + mode.name;
+
+            // Render 8 knobs (name only, no detail)
+            let knobsHTML = '';
+            for (let i = 0; i < 8; i++) {
+                const knob = mode.knobs[i] || {name: '—'};
+                knobsHTML += `
+                    <div class="knob">
+                        <div class="knob-name">${knob.name}</div>
+                    </div>
+                `;
+            }
+            document.getElementById('knobs-grid').innerHTML = knobsHTML;
+
+            // Render 16 pads (2 rows x 8 columns, name only)
+            let padsHTML = '';
+            for (let i = 0; i < 16; i++) {
+                let padName = '';
+
+                // Use dynamic labels if available (from status), otherwise use static mode data
+                if (padLabels.length > 0 && padLabels[i]) {
+                    padName = padLabels[i];
+                } else if (mode.pads.type === 'list') {
+                    // Find matching pad in list
+                    const padInfo = mode.pads.items.find(p => {
+                        if (typeof p.num === 'number') return p.num === i;
+                        if (typeof p.num === 'string') {
+                            // Handle ranges like "4-15"
+                            if (p.num.includes('-')) {
+                                const [start, end] = p.num.split('-').map(Number);
+                                return i >= start && i <= end;
+                            }
+                        }
+                        return false;
+                    });
+                    if (padInfo) {
+                        padName = padInfo.name;
+                    }
+                } else if (mode.pads.grid) {
+                    // Grid format (like session mode)
+                    const row = Math.floor(i / 8);
+                    const col = i % 8;
+                    if (mode.pads.grid[row] && mode.pads.grid[row][col]) {
+                        padName = mode.pads.grid[row][col];
+                    }
+                }
+
+                padsHTML += `
+                    <div class="pad">
+                        <div class="pad-name">${padName}</div>
+                    </div>
+                `;
+            }
+            document.getElementById('pads-grid').innerHTML = padsHTML;
+        }
+
+        function updatePadColors(colors) {
+            const pads = document.querySelectorAll('.pad');
+            pads.forEach((pad, index) => {
+                if (colors[index]) {
+                    pad.style.backgroundColor = colors[index];
+                    // Adjust text color based on brightness
+                    const brightness = getBrightness(colors[index]);
+                    const padName = pad.querySelector('.pad-name');
+                    if (padName) {
+                        padName.style.color = brightness > 128 ? '#000' : '#00ff88';
+                    }
+                }
+            });
+        }
+
+        function updatePadLabels(labels) {
+            if (labels.length === 0) return;
+            const pads = document.querySelectorAll('.pad');
+            pads.forEach((pad, index) => {
+                const padName = pad.querySelector('.pad-name');
+                if (padName && labels[index] !== undefined) {
+                    padName.textContent = labels[index] || '';
+                }
+            });
+        }
+
+        function getBrightness(hexColor) {
+            // Convert hex to RGB and calculate perceived brightness
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            return (r * 299 + g * 587 + b * 114) / 1000;
+        }
+
+        function updateKnobLabels(labels) {
+            // Update knob labels with dynamic parameter names
+            if (labels.length === 0) return;
+            const knobs = document.querySelectorAll('.knob-name');
+            knobs.forEach((knob, index) => {
+                if (labels[index] !== undefined && labels[index] !== '') {
+                    knob.textContent = labels[index];
+                }
+            });
+        }
+
+        function renderShiftPads() {
+            // Render 16 mode selector pads (shift mode)
+            let shiftHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const modeName = MODE_NAMES[i] || `Mode ${i}`;
+                const isActive = i === currentMode;
+                shiftHTML += `
+                    <div class="shift-pad ${isActive ? 'active' : ''}" data-mode="${i}">
+                        ${modeName}
+                    </div>
+                `;
+            }
+            document.getElementById('shift-pads-grid').innerHTML = shiftHTML;
+        }
+
+        function updateShiftPads(activeModeNum) {
+            // Update which shift pad is highlighted
+            const shiftPads = document.querySelectorAll('.shift-pad');
+            shiftPads.forEach((pad, index) => {
+                if (index === activeModeNum) {
+                    pad.classList.add('active');
+                } else {
+                    pad.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

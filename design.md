@@ -62,16 +62,16 @@ Pads show clips in red box, 8 x 2. The rest of the mode has to be defined, but k
 
 # Mode 5 - Instruments and Devices
 
-  - Knob 1: Navigate tracks. If past the last track, creates a new midi track.
-  - Knob 2: Navigate browser hierarchy (folders, categories up/down)
-  - Knob 3: Scroll items at current hierarchy level (one by one)
-  - Knob 4: Fast scroll (jump by 8)
-  - Knob 5: Navigate devices on current track
-  - Knob 6: Reorder devices (move selected device left/right)
-  - Knob 7: Unused
+  - Knob 1: Navigate tracks
+  - Knob 2: Right - add track, left - delete track
+  - Knob 3: Navigate browser hierarchy (folders, categories up/down)
+  - Knob 4: Scroll items at current hierarchy level (one by one)
+  - Knob 5: Fast scroll (jump by 8)
+  - Knob 6: Navigate devices on current track
+  - Knob 7: Reorder devices (move selected device left/right). Pushing the device for a while past it's rightmost or leftmost point deletes it
   - Knob 8: Undo/Redo
 
-Pad 1 tapped alone adds the given instrument or device to the track. Pad 2 deletes the selected device. Holding a combination of other pads for a longer time, like a second, memorizes the instrument or device to the combination. A short press of the combination adds the given instrument or device.
+Pad 1 tapped alone adds the given instrument or device to the track. Holding a combination of other pads for a longer time, like a second, memorizes the instrument or device to the combination. A short press of the combination adds the given instrument or device to the current track.
 
 # Mode 6 - Crossfader
 

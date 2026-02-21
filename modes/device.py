@@ -10,7 +10,7 @@ from ..Hardware import (
 )
 
 # Pad configuration
-DEVICE_PAD_CHANNEL = 2  # Channel 3 (0-indexed)
+DEVICE_PAD_CHANNEL = 9  # Channel 3 (0-indexed)
 DEVICE_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
@@ -49,7 +49,7 @@ class DeviceMode(ModeBase):
         # Clear hardware cache
         self._hw.clear_cache()
 
-        # Configure all 16 pads as notes
+        # Configure all 16 pads as MCP (don't trigger notes)
         for i in range(16):
             self._hw.configure_pad(
                 pad_index=i,
@@ -365,6 +365,51 @@ class DeviceMode(ModeBase):
             except:
                 pass
             self._devices_listener = None
+
+    def get_pad_labels(self):
+        """Get current pad labels (device names for top row, function names for bottom row)."""
+        labels = []
+        song = self.song()
+        track = song.view.selected_track
+        devices = list(track.devices) if hasattr(track, 'devices') else []
+
+        # Top row (0-7): device names
+        for i in range(8):
+            if i < len(devices):
+                labels.append(devices[i].name)
+            else:
+                labels.append('')
+
+        # Bottom row (8-15): function names
+        labels.extend([
+            'Bank <', 'Bank >',
+            'Dev -8', 'Dev +8',
+            'Trk <', 'Trk >',
+            'Undo', 'Redo'
+        ])
+
+        return labels
+
+    def get_knob_labels(self):
+        """Get current knob labels (actual parameter names from appointed device)."""
+        labels = []
+        song = self.song()
+        device = song.appointed_device
+
+        if device:
+            params = list(device.parameters)
+            for i in range(8):
+                param_index = self._bank_offset + i + 1  # Skip "Device On" at index 0
+                if param_index < len(params):
+                    param = params[param_index]
+                    labels.append(param.name)
+                else:
+                    labels.append('')
+        else:
+            # No device selected
+            labels = [''] * 8
+
+        return labels
 
     def disconnect(self):
         """Cleanup when leaving device mode."""

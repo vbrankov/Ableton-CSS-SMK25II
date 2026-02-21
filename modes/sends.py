@@ -9,7 +9,7 @@ from ..Hardware import (
 )
 
 # Pad configuration
-SENDS_PAD_CHANNEL = 4  # Channel 5 (0-indexed)
+SENDS_PAD_CHANNEL = 9  # Channel 5 (0-indexed)
 SENDS_PAD_BASE_NOTE = 36  # C1
 
 # Knob configuration
