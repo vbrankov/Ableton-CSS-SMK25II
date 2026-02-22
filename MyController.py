@@ -219,6 +219,9 @@ class MyController(ControlSurface):
 
         self._current_mode_number = mode_number
 
+        # Rebuild MIDI map to update forwarding rules (e.g., drum mode needs notes to pass through)
+        self.request_rebuild_midi_map()
+
         # Just update colors - hardware is already configured
         if self._current_mode:
             self._current_mode.update()
@@ -307,13 +310,16 @@ class MyController(ControlSurface):
 
         # Forward pads (channel 9) - all pads send notes
         # Notes 36-51 for regular mode pads
-        for note in range(36, 52):
-            Live.MidiMap.forward_midi_note(
-                self._c_instance.handle(),
-                midi_map_handle,
-                9,  # Channel 9 (standard MIDI drums)
-                note
-            )
+        # EXCEPT in drum mode (not drum_color) - let notes pass through to Ableton to play sounds
+        # Drum color mode needs to receive notes for timing tracking
+        if self._current_mode_number != MODE_DRUMS:
+            for note in range(36, 52):
+                Live.MidiMap.forward_midi_note(
+                    self._c_instance.handle(),
+                    midi_map_handle,
+                    9,  # Channel 9 (standard MIDI drums)
+                    note
+                )
 
         # Notes 52-67 for shift pads (on shifted hardware page)
         for note in range(52, 68):

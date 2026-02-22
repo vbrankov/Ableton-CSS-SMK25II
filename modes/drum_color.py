@@ -51,6 +51,9 @@ class DrumColorMode(ModeBase):
 
     def update(self):
         """Configure hardware and update pad colors."""
+        # Reload colors for current instrument (in case we switched modes or instruments)
+        self._update_instrument()
+
         # Configure all pads as regular NOTE pads on channel 9 (cached)
         # Same layout as Mode 8: top row (0-7) = upper notes (44-51), bottom row (8-15) = lower notes (36-43)
         for i in range(16):
@@ -88,7 +91,12 @@ class DrumColorMode(ModeBase):
             self._hw.set_pad_color(i, rgb, shifted=False)
 
     def handle_pad(self, pad_index, velocity):
-        """Handle pad press/release - track press/release times for color editing."""
+        """Handle pad press/release - track press/release times for color editing.
+
+        Note: In drum color mode, pads don't play sounds (MIDI is intercepted for
+        timing tracking). Use drum mode (Mode 8) to hear sounds while playing.
+        Workflow: Use Mode 8 to play and compose, then Mode 9 to customize colors.
+        """
         if velocity == 0:
             # Pad released - record the release time
             self._pad_release_times[pad_index] = time.time()

@@ -68,6 +68,9 @@ class SessionMode(ModeBase):
 
     def update(self):
         """Configure hardware and update pad colors."""
+        # Set session highlight (red box) to correct size
+        self._set_session_highlight()
+
         # Configure pads (cached - won't resend if already configured)
         for i in range(16):
             self._hw.configure_pad(

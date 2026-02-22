@@ -25,11 +25,13 @@ class DrumsMode(ModeBase):
 
     def configure(self):
         """One-time setup for drums mode."""
-        # Load colors from drum_color config if available
-        self._load_colors()
+        pass
 
     def update(self):
         """Configure hardware and update colors."""
+        # Reload colors from drum_color config (in case they were edited)
+        self._load_colors()
+
         # Configure all pads as drum notes (cached)
         # Swap rows: top row (0-7) gets upper notes (44-51), bottom row (8-15) gets lower notes (36-43)
         for i in range(16):

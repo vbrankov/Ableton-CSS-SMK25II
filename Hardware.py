@@ -71,7 +71,6 @@ class Hardware:
 
     def configure_knob(self, knob_index, channel, cc, speed=0, shifted=False):
         """Fully configure a knob as relative CC."""
-        self._log(f"HW: configure_knob(knob={knob_index}, ch={channel}, cc={cc}, shifted={shifted})")
         self.set_knob_type(knob_index, KNOB_TYPE_RELATIVE, shifted=shifted)
         self.set_knob_speed(knob_index, speed, shifted=shifted)
         self.set_knob_channel(knob_index, channel, shifted=shifted)
